@@ -1,1 +1,1 @@
-bundle exec jekyll build -d ..\..\site -b bug-free-happiness
+bundle exec jekyll build -d ..\..\site

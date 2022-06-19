@@ -1,1 +1,1 @@
-Sitemap: /bug-free-happiness/sitemap.xml
+Sitemap: /sitemap.xml
