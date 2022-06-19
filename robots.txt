@@ -1,1 +1,1 @@
-Sitemap: /https://sreerajr000.github.io/bug-free-happiness/sitemap.xml
+Sitemap: /sitemap.xml
