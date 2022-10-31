@@ -2,9 +2,9 @@
 layout: post
 title:  "Inception Movie"
 author: sree
-categories: [ Jekyll, tutorial ]
-tags: [red, yellow]
-image: assets/images/11.jpg
+categories: Posts
+tags: [red, yellow, blue]
+image: assets/images/jumbotron.jpg
 description: "My review of Inception movie. Acting, plot and something else in this short description."
 featured: true
 hidden: true

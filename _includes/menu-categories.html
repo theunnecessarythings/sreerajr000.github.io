@@ -1,0 +1,19 @@
+<!-- Don't edit anything here, categories are dynamically generated -->
+
+<nav class="navbar navbar-expand-lg navbar-light bg-white pl-2 pr-2">
+    <button class="navbar-light navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarsExplore" aria-controls="navbarsDefault" aria-expanded="false" aria-label="Toggle navigation">
+    <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarsExplore">
+    <ul class="navbar-nav categories">
+      {% assign sorted_tags = site.tags | sort %}
+      {% for tag in sorted_tags %}
+        {% assign zz = tag[1] | where: "categories", "Gallery" | sort %}
+        {% if zz != empty %}
+        
+        <li class="nav-item"><a class="nav-link" href="{{site.baseurl}}/tags#{{ tag[0] | downcase }}">{{ tag[0] }} ({{ zz.size }})</a></li>
+        {% endif %}
+      {% endfor %}
+    </ul>    
+    </div>
+</nav>
