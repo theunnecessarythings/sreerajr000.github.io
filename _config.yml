@@ -16,7 +16,7 @@ authors:
   sree:
     name: Sreeraj Ramachandran
     display_name: Sreeraj Ramachandran
-    gravatar: e56154546cf4be74e393c62d1ae9f9d4
+    gravatar: 77c3d63c3052395217eef01d41278b53
     email: sreerajr000@gmail.com
     web: https://sreeraj.in
     twitter: https://twitter.com/
@@ -59,6 +59,6 @@ adsense-data-ad-client: "ca-pub-3412143450191416"
 adsense-data-ad-slot: "1363087678"
 
 # Lazy Images ("enabled" or "disabled")
-lazyimages: "disabled"
+lazyimages: "enabled"
 
 exclude: [changelog.md, LICENSE.txt, README.md, Gemfile, Gemfile.lock]
