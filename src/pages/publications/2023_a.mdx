@@ -1,0 +1,25 @@
+---
+id: 2023_a
+title: "Leveraging Diffusion and Flow Matching Models for Demographic Bias Mitigation of Facial Attribute Classifiers"
+authors: "Sreeraj Ramachandran, Ajita Rattani"
+image: "images/2023_a.png"
+date: 2023/12/14
+venue: "Techrxiv"
+publisher: IEEE
+abstract: |
+  Published research highlights the presence of demographic bias in automated facial attribute classification algorithms, notably im-pacting women and individuals with darker skin tones. Proposed bias mitigation techniques are not generalizable, need demographic annotations, are application-specific, and often obtain fairness by reducing overall accuracy. In response to these challenges, this paper proposes a novel bias mitigation technique that systematically integrates diffusion and flow-matching models with a base classifier with minimal additional computational overhead. These generative models are chosen for their extreme success in capturing diverse data distributions and their inherent stochasticity. Our proposed approach augments the base classifier's accuracy across all demographic subgroups with enhanced fairness. Further, the stochastic nature of these generative models is harnessed to quantify prediction uncertainty, allowing for test-time rejection, which further enhances fairness. Additionally, novel solvers are proposed to significantly reduce the computational overhead of generative model inference. An exhaustive evaluation carried out on facial attribute annotated datasets substantiates the efficacy of our approach in enhancing the accuracy and fairness of facial attribute classifiers by 0.5%− 3% and 0.5%− 5% across datasets over SOTA mitigation techniques. Thus, obtaining state-of-the-art performance. Further, our proposal does not need a demographically annotated training set and is generalizable to any downstream classification task.
+link: https://d197for5662m48.cloudfront.net/documents/publicationstatus/181614/preprint_pdf/1335ac567e8bc0a0aee16ea60decadad.pdf
+citation: |
+  @article{Ramachandran_2023,
+  title={Leveraging Diffusion and Flow Matching Models for Demographic Bias Mitigation of Facial Attribute Classifiers},
+  url={http://dx.doi.org/10.36227/techrxiv.170259050.05499448/v1},
+  DOI={10.36227/techrxiv.170259050.05499448/v1},
+  publisher={Institute of Electrical and Electronics Engineers (IEEE)},
+  author={Ramachandran, Sreeraj and Rattani, Ajita},
+  year={2023},
+  month=dec }
+---
+
+import PubsComponent from '../../components/PubsComponent.astro'
+
+<PubsComponent frontmatter={frontmatter}></PubsComponent>

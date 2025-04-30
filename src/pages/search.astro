@@ -1,0 +1,52 @@
+---
+
+---
+<div class="section">
+  <h1 class="title">Search</h1>
+  <div id="search"></div>
+</div>
+
+<script is:inline type="module">
+  import {
+    w2ui,
+  } from "https://rawgit.com/vitmalina/w2ui/master/dist/w2ui.es6.min.js";
+
+  function truncateString(str, maxLength) {
+    if (str.length > maxLength) {
+      return str.slice(0, maxLength) + '...';
+    }
+    return str;
+  }
+
+
+  window.clickBtnSearch = function(id, title) {
+    let tabs = w2ui.layout_main_tabs;
+    if (tabs.get(id)) {
+      tabs.click(id);
+    } else {
+      tabs.add({ id: id, text: truncateString(title, 20), closable: true });
+      tabs.click(id);
+    }
+  }
+
+
+  new PagefindUI({ 
+    element: "#search", 
+    resetStyles: false,
+    processResult: function (result) {
+      if (result.meta.title === undefined) {
+        result.meta.title = result.content.split('.')[0];
+      }
+      result.url = 'javascript:clickBtnSearch("' + result.url + '", "' + result.meta.title + '")'; 
+      return result;
+    }
+  });
+
+  let searchValue = document.getElementById("searchInput").value;
+  const searchInput = document.querySelector("#search input");
+  const e = new Event("input", { bubbles: true });
+  if (searchValue && searchInput) {
+      searchInput.value = searchValue;
+      searchInput.dispatchEvent(e);
+  }
+</script>

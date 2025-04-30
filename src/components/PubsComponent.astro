@@ -1,0 +1,58 @@
+---
+const {frontmatter} = Astro.props;
+---
+<div class="page-wrapper">
+<div class="section box">
+<section class="content is-medium">
+
+<h1 class="title is-2">{frontmatter.title}</h1>
+
+<div class="columns">
+  <div class="column">
+    <figure class="image">
+      <img src={frontmatter.image} alt={frontmatter.title}>
+    </figure>
+  </div>
+  <div class="column">
+    <p><strong>Authors:</strong> {frontmatter.authors}</p>
+    <p><strong>Venue:</strong> {frontmatter.venue}</p>
+    <p><strong>Date:</strong> {frontmatter.date}</p>
+    <p><strong>Publisher:</strong> {frontmatter.publisher}</p>
+    <a href={frontmatter.link}>
+        <button class="button is-primary">Read More</button>
+    </a>
+  </div>
+
+</div>
+
+<h2 class="title is-4">Abstract</h2>
+<p>{frontmatter.abstract}</p>
+
+<p><strong><a href={frontmatter.link}>[Read more]</a></strong></p>
+
+<h2 class="title is-4">Citation</h2>
+
+<pre class="box">{frontmatter.citation}</pre>
+
+</section>
+<div class="giscus"></div>
+</div>
+
+<script src="https://giscus.app/client.js"
+        data-repo="theunnecessarythings/sreerajr000.github.io"
+        data-repo-id="R_kgDOHhobNQ"
+        data-category="Announcements"
+        data-category-id="DIC_kwDOHhobNc4Ci3VC"
+        data-mapping="og:title"
+        data-strict="1"
+        data-reactions-enabled="1"
+        data-emit-metadata="1"
+        data-input-position="top"
+        data-theme="dark_dimmed"
+        data-lang="en"
+        data-loading="lazy"
+        crossorigin="anonymous"
+        async>
+</script>
+</div>
+

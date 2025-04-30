@@ -1,0 +1,130 @@
+---
+---
+
+<div class="page-wrapper">
+<div class="grid is-col-min-12">
+
+  <div class="cell section is-large">
+    <section class="head is-info is-large">
+      <div class="hero-body">
+        <!-- <hr> -->
+        <div class="container has-text-centered">
+          <p class="main_title title has-text-weight-bold is-size-1">Sreeraj</p>
+          <p class="main_title title has-text-weight-bold is-size-1">Ramachandran</p>
+          <hr>
+          <button id="btn_abt_me" class="button is-large is-family-monospace">stuff i made</button>
+          <button id="btn_abt" class="button is-large is-family-monospace is-rounded is-success">
+            i
+          </button>
+        </div>
+
+      </div>
+    </section>
+  </div>
+
+  <div class="is-hidden cell section" id="about_me">
+    <div class="flex">
+
+      <div class="card">
+        <div class="card-content">
+          <div class="content">
+            <h1 class="title">Projects</h1>
+            <button id="btn_projects" class="button is-family-monospace is-danger">View More Projects</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-content">
+          <div class="content">
+            <h1 class="title">Blog</h1>
+            <button id="btn_blogs" class="button is-family-monospace is-danger">View More Blogs</button>
+          </div>
+        </div>
+      </div>
+    
+      <div class="card">
+        <div class="card-content">
+          <div class="content">
+            <h1 class="title">Publications</h1>
+            <button id="btn_pubs" class="button is-family-monospace is-danger">View More Publications</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-content">
+          <div class="content">
+            <h1 class="title">Gallery</h1>
+            <button id="btn_gallery" class="button is-family-monospace is-danger">View More Gallery</button>
+          </div>
+        </div>
+      </div>
+
+
+
+  </div>
+</div>
+</div>
+
+<script is:inline type="module">
+  import {
+  w2ui,
+  } from "https://rawgit.com/vitmalina/w2ui/master/dist/w2ui.es6.min.js";
+
+  document.getElementById('btn_abt_me').addEventListener('click', () => {
+    document.getElementById('about_me').classList.toggle('is-hidden');
+  });
+
+  document.getElementById('btn_projects').addEventListener('click', () => {
+      let tabs = w2ui.layout_main_tabs;
+      if (tabs.get('projects')) {
+        tabs.click('projects');
+      } else {
+        tabs.add({ id: 'projects', text: 'Projects', closable: true });
+        tabs.click('projects');
+      }
+  });
+  
+  document.getElementById('btn_blogs').addEventListener('click', () => {
+      let tabs = w2ui.layout_main_tabs;
+      if (tabs.get('blog')) {
+        tabs.click('blog');
+      } else {
+        tabs.add({ id: 'blog', text: 'Blogs', closable: true });
+        tabs.click('blog');
+      }
+  });
+
+  document.getElementById('btn_pubs').addEventListener('click', () => {
+      let tabs = w2ui.layout_main_tabs;
+      if (tabs.get('publications')) {
+        tabs.click('publications');
+      } else {
+        tabs.add({ id: 'publications', text: 'Publications', closable: true });
+        tabs.click('publications');
+      }
+  });
+
+  document.getElementById('btn_gallery').addEventListener('click', () => {
+      let tabs = w2ui.layout_main_tabs;
+      if (tabs.get('gallery')) {
+        tabs.click('gallery');
+      } else {
+        tabs.add({ id: 'gallery', text: 'Gallery', closable: true });
+        tabs.click('gallery');
+      }
+  });
+
+  
+  document.getElementById('btn_abt').addEventListener('click', () => {
+      let tabs = w2ui.layout_main_tabs;
+      if (tabs.get('about')) {
+        tabs.click('about');
+      } else {
+        tabs.add({ id: 'about', text: 'About', closable: true });
+        tabs.click('about');
+      }
+  });
+
+</script>

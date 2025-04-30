@@ -1,0 +1,33 @@
+---
+import { ViewTransitions } from 'astro:transitions';
+const { title } = Astro.props;
+import '../styles/main.css';
+import '../styles/font-awesome/css/all.min.css';
+---
+
+<html lang="en">
+	<head>
+	  <ViewTransitions />
+		<meta charset="utf-8" />
+		<meta property="og:title" content={title} />
+		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+		<link rel="stylesheet" type="text/css" href="https://rawgit.com/vitmalina/w2ui/master/dist/w2ui.min.css">
+		<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@1.0.2/css/bulma.min.css"
+>
+		<link rel="preconnect" href="https://fonts.googleapis.com">
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+		<link href="https://fonts.googleapis.com/css2?family=Jura:wght@300..700&family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap" rel="stylesheet">
+		<link href="/pagefind/pagefind-ui.css" rel="stylesheet">
+		<script is:inline src="/pagefind/pagefind-ui.js"></script>
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<meta name="generator" content={Astro.generator} />
+		<title>{title}</title>
+	</head>
+	<body data-theme="dark">
+	  <div id="toolbar"></div>
+		<div id="main"></div>
+	</body>
+	<script type="module" is:inline src="/scripts/main_layout.js"></script>
+</html>
+
+

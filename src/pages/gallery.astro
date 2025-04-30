@@ -1,0 +1,113 @@
+---
+let allImages = [];
+try {
+  allImages = await Astro.glob('./gallery/*');
+} catch (e) {
+  console.log(e);
+}
+---
+
+<style>
+.masonry-container {
+  column-count: 3; /* Number of columns */
+  column-gap: 0.2rem; /* Space between columns */
+}
+
+.masonry-item:hover {
+  border: 1px var(--bulma-primary) solid;
+  border-radius: 0;
+  transform: scale(1.02); /* Scale up on hover */
+  transition: transform 0.2s; /* Smooth scaling */
+}
+
+.masonry-item {
+  break-inside: avoid; /* Prevent item from breaking between columns */
+  margin: 0.1rem;
+  padding: 2px;
+}
+
+@media screen and (max-width: 768px) {
+  .masonry-container {
+    column-count: 2; /* Adjust columns for smaller screens */
+  }
+}
+
+@media screen and (max-width: 480px) {
+  .masonry-container {
+    column-count: 1; /* Single column for mobile */
+  }
+}
+</style>
+<div class="page-wrapper">
+<div class="section">
+    <div class="hero-body has-text-centered">
+        <p class="main_title title has-text-weight-bold is-size-1">Gallery</p>
+    </div>
+</div>
+
+
+<div class="section masonry-container">
+  {allImages.map((image) =>
+    <button class="js-modal-trigger" data-target="modal-js-example" data-src={image.default.src}>
+      <div class="masonry-item box">
+        <img src={image.default.src}/>
+      </div>
+    </button>
+  )}
+</div>
+
+<div class="modal" id="modal-js-example">
+  <div class="modal-background"></div>
+  <div class="modal-content">
+    <div class="image">
+      <img id="modal-image" src="https://bulma.io/assets/images/placeholders/1280x960.png" alt="">
+    </div>
+  </div>
+  <button class="modal-close is-large" aria-label="close"></button>
+</div>
+</div>
+<script is:inline defer>
+  // Functions to open and close a modal
+  function openModal($el) {
+    $el.classList.add('is-active');
+  }
+
+  function closeModal($el) {
+    $el.classList.remove('is-active');
+  }
+
+  function closeAllModals() {
+    (document.querySelectorAll('.modal') || []).forEach(($modal) => {
+      closeModal($modal);
+    });
+  }
+
+  // Add a click event on buttons to open a specific modal
+  (document.querySelectorAll('.js-modal-trigger') || []).forEach(($trigger) => {
+    const modal = $trigger.dataset.target;
+    const $target = document.getElementById(modal);
+    const modalImage = document.getElementById('modal-image');
+    $trigger.addEventListener('click', () => {
+      const src = $trigger.dataset.src;
+      modalImage.src = src;
+      openModal($target);
+    });
+  });
+
+  // Add a click event on various child elements to close the parent modal
+  (document.querySelectorAll('.modal-background, .modal-close, .modal-card-head .delete, .modal-card-foot .button') || []).forEach(($close) => {
+    const $target = $close.closest('.modal');
+
+    $close.addEventListener('click', () => {
+      closeModal($target);
+    });
+  });
+
+  // Add a keyboard event to close all modals
+  document.addEventListener('keydown', (event) => {
+    if(event.key === "Escape") {
+      closeAllModals();
+    }
+  });
+
+</script>

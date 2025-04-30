@@ -1,0 +1,73 @@
+---
+let allProjects = [];
+try {
+  allProjects = await Astro.glob('./projects/*.mdx');
+} catch (e) {
+  console.log(e);
+}
+
+const dateOptions: object = {
+	year: "numeric",
+	month: "long",
+	day: "numeric",
+};
+---
+
+<script is:inline type="module">
+  import {
+    w2ui,
+  } from "https://rawgit.com/vitmalina/w2ui/master/dist/w2ui.es6.min.js";
+
+  window.clickBtnProjects = function(id, title) {
+    let tabs = w2ui.layout_main_tabs;
+    if (tabs.get(id)) {
+      tabs.click(id);
+    } else {
+      tabs.add({ id: id, text: title, closable: true });
+      tabs.click(id);
+    }
+  }
+
+</script>
+
+<div class="page-wrapper">
+  <div class="section">
+    <section class="head is-info is-large">
+      <div class="hero-body">
+        <hr>
+        <div class="container has-text-centered">
+          <p class="main_title title has-text-weight-bold is-size-1">Projects</p>
+          <hr>
+          <!-- <button id="btn_posts" class="button is-large is-family-monospace">View More</button> -->
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div class="section" id="projects">
+    <div class="grid is-col-min-18">
+      {
+      allProjects.map((post) =>
+        <div class="cell card" style="display: flex; flex-direction: column;">
+          <div class="card-image">
+            <figure class="image">
+              <img src={post.frontmatter.image} alt={post.frontmatter.title} />
+            </figure>
+          </div>
+          <div class="card-content" style="flex-grow: 1;">
+            <div class="content">
+              <h1 class="title">{post.frontmatter.title}</h1>
+              <p class="subtitle"> {post.frontmatter.subtitle} </p>
+            </div>
+          </div>
+          <footer class="card-footer">
+            <button class="card-footer-item button is-family-monospace is-primary" style="border-radius: 0 0 0 var(--bulma-card-radius);" onclick={`clickBtnProjects("projects/${post.frontmatter.id}", "${post.frontmatter.title}")`} id={`btn_${post.frontmatter.id}`} >View More</button>
+            
+            <p class="card-footer-item is-size-7 has-text-grey-light"> {new Date(post.frontmatter.date).toLocaleDateString("en-US", dateOptions)} </p>
+          </footer>
+        </div>
+      )}
+  </div>
+</div>
+
+

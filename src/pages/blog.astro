@@ -1,0 +1,57 @@
+---
+let allBlogs = [];
+try {
+  allBlogs = await Astro.glob('./blogs/*.mdx');
+} catch (e) {
+  console.log(e);
+}
+---
+<script is:inline type="module">
+  import {
+    w2ui,
+  } from "https://rawgit.com/vitmalina/w2ui/master/dist/w2ui.es6.min.js";
+
+
+  window.clickBtnBlogs = function(id, title) {
+    let tabs = w2ui.layout_main_tabs;
+    if (tabs.get(id)) {
+      tabs.click(id);
+    } else {
+      tabs.add({ id: id, text: title, closable: true });
+      tabs.click(id);
+    }
+  }
+
+</script>
+
+<div class="page-wrapp">
+  <div class="section">
+    <section class="head is-info is-large">
+      <div class="hero-body">
+        <hr>
+        <div class="container has-text-centered">
+          <p class="main_title title has-text-weight-bold is-size-1">Blogs</p>
+          <hr>
+          <!-- <button id="btn_blogs" class="button is-large is-family-monospace">View More</button> -->
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div class="section" id="blogs">
+    <div class="grid is-col-min-18">
+      {
+      allBlogs.map((post) =>
+        <div class="card">
+          <div class="card-content">
+            <div class="content">
+              <h1 class="title">{post.frontmatter.title}</h1>
+              <button onclick={`clickBtnPosts("blogs/${post.frontmatter.id}", "${post.frontmatter.title}")`} id={`btn_${post.frontmatter.id}`} class="card-footer-item button is-family-monospace is-primary">View More</button>
+            </div>
+          </div>
+        </div>
+      )}
+  </div>
+</div>
+
+
