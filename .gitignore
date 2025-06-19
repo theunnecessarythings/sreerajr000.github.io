@@ -5,3 +5,5 @@ _site
 *~
 node_modules
 dist
+bak2/dist
+bak2/node_modules

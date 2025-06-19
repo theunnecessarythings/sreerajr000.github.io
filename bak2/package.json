@@ -1,0 +1,23 @@
+{
+  "name": "sreeraj.in",
+  "type": "module",
+  "version": "0.0.1",
+  "scripts": {
+    "dev": "astro dev",
+    "start": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "astro": "astro"
+  },
+  "dependencies": {
+    "@astrojs/mdx": "^3.1.5",
+    "astro": "^4.15.9",
+    "astro-pagefind": "^1.6.0",
+    "bulma-toast": "^2.4.4",
+    "pagefind": "^1.1.1",
+    "three": "^0.168.0"
+  },
+  "devDependencies": {
+    "vite": "^5.4.2"
+  }
+}

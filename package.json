@@ -1,23 +1,34 @@
 {
-  "name": "sreeraj.in",
+  "name": "v2",
+  "private": true,
+  "version": "0.0.0",
   "type": "module",
-  "version": "0.0.1",
   "scripts": {
-    "dev": "astro dev",
-    "start": "astro dev",
-    "build": "astro build",
-    "preview": "astro preview",
-    "astro": "astro"
+    "dev": "vite",
+    "build": "vite build",
+    "lint": "eslint .",
+    "preview": "vite preview"
   },
   "dependencies": {
-    "@astrojs/mdx": "^3.1.5",
-    "astro": "^4.15.9",
-    "astro-pagefind": "^1.6.0",
-    "bulma-toast": "^2.4.4",
-    "pagefind": "^1.1.1",
-    "three": "^0.168.0"
+    "@react-spring/web": "^10.0.1",
+    "framer-motion": "^12.18.1",
+    "lucide-react": "^0.517.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "three": "^0.177.0"
   },
   "devDependencies": {
-    "vite": "^5.4.2"
+    "@eslint/js": "^9.25.0",
+    "@types/react": "^19.1.2",
+    "@types/react-dom": "^19.1.2",
+    "@vitejs/plugin-react": "^4.4.1",
+    "autoprefixer": "^10.4.21",
+    "eslint": "^9.25.0",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "eslint-plugin-react-refresh": "^0.4.19",
+    "globals": "^16.0.0",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^3.4.17",
+    "vite": "^6.3.5"
   }
 }
