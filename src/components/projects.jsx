@@ -1,9 +1,22 @@
 import React from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ArrowLeft, ExternalLink } from "lucide-react";
 import { Button } from "./button";
 import { DecoderText } from "./decoder_text";
-import { projectsData } from "../mock_data.jsx";
+
+const posts = import.meta.glob("/src/content/projects/*.mdx", { eager: true });
+
+const projectsData = Object.keys(posts)
+  .map((file) => {
+    const slug = file.split("/").pop().replace(".mdx", "");
+    return {
+      slug,
+      ...posts[file].frontmatter,
+      Content: posts[file].default,
+    };
+  })
+  .sort((a, b) => new Date(b.date) - new Date(a.date));
 
 const tagColorMap = {
   React: "bg-cyan-500/20 text-cyan-300",
@@ -18,9 +31,10 @@ const tagColorMap = {
 };
 const getTagColor = (tag) => tagColorMap[tag] || "bg-gray-700 text-gray-300";
 
-export const ProjectsPage = ({ animationsReady, onSelectProject }) => {
+export const ProjectsPage = ({ animationsReady }) => {
   const featuredProject = projectsData.find((p) => p.featured);
   const otherProjects = projectsData.filter((p) => !p.featured);
+  const navigate = useNavigate();
 
   return (
     <main className="flex-1 m-4 p-4 sm:m-6 sm:p-6 md:m-12 md:p-12">
@@ -40,7 +54,7 @@ export const ProjectsPage = ({ animationsReady, onSelectProject }) => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.2, ease: "easeOut" }}
-          onClick={() => onSelectProject(featuredProject)}
+          onClick={() => navigate(`/projects/${featuredProject.slug}`)}
         >
           <div className="absolute inset-0 z-0 opacity-20 group-hover:opacity-40 transition-opacity duration-500">
             <div
@@ -73,7 +87,7 @@ export const ProjectsPage = ({ animationsReady, onSelectProject }) => {
                 delay: 0.4 + index * 0.2,
                 ease: "easeOut",
               }}
-              onClick={() => onSelectProject(project)}
+              onClick={() => navigate(`/projects/${project.slug}`)}
             >
               <div className="relative">
                 <h3 className="font-display text-2xl text-white font-bold">
@@ -98,55 +112,70 @@ export const ProjectsPage = ({ animationsReady, onSelectProject }) => {
   );
 };
 
-export const ProjectDetailPage = ({ project, onBack, animationsReady }) => (
-  <main className="flex-1 p-4 sm:p-6 md:p-12">
-    <div className="max-w-4xl mx-auto">
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.5 }}
-      >
-        <Button onClick={onBack} secondary icon={<ArrowLeft />}>
-          Back to projects
-        </Button>
-        <motion.h1
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="font-display text-4xl md:text-5xl font-bold text-white my-8"
-        >
-          {project.title}
-        </motion.h1>
+export const ProjectDetailPage = ({ animationsReady }) => {
+  const { slug } = useParams();
+  const navigate = useNavigate();
+  const project = projectsData.find((p) => p.slug === slug);
+
+  if (!project) return null; // Or a 404 component
+  const { Content } = project;
+  return (
+    <main className="flex-1 p-4 sm:p-6 md:p-12">
+      <div className="max-w-4xl mx-auto">
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="flex flex-wrap gap-2 mb-8"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.5 }}
         >
-          {project.tech.map((t) => (
-            <span key={t} className={`text-sm px-3 py-1 ${getTagColor(t)}`}>
-              {t}
-            </span>
-          ))}
-        </motion.div>
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-          className="project-content font-body text-lg text-gray-300 leading-relaxed"
-          dangerouslySetInnerHTML={{ __html: project.content }}
-        />
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5 }}
-          className="mt-12"
-        >
-          <Button href="#" iconEnd={<ExternalLink />}>
-            View Project
+          <Button
+            onClick={() => {
+              navigate(-1);
+            }}
+            secondary
+            icon={<ArrowLeft />}
+          >
+            Back to projects
           </Button>
+          <motion.h1
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="font-display text-4xl md:text-5xl font-bold text-white my-8"
+          >
+            {project.title}
+          </motion.h1>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="flex flex-wrap gap-2 mb-8"
+          >
+            {project.tech.map((t) => (
+              <span key={t} className={`text-sm px-3 py-1 ${getTagColor(t)}`}>
+                {t}
+              </span>
+            ))}
+          </motion.div>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+            className="project-content font-body text-lg text-gray-300 leading-relaxed"
+          >
+            <Content />
+          </motion.div>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 }}
+            className="mt-12"
+          >
+            <Button href="#" iconEnd={<ExternalLink />}>
+              View Project
+            </Button>
+          </motion.div>
         </motion.div>
-      </motion.div>
-    </div>
-  </main>
-);
+      </div>
+    </main>
+  );
+};

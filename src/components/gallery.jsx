@@ -1,7 +1,7 @@
 import React from "react";
 import { motion } from "framer-motion";
 import { DecoderText } from "./decoder_text";
-import { galleryData } from "../mock_data";
+import { galleryData } from "../gallery_data";
 
 export const GalleryPage = ({ animationsReady, onSelectImage }) => (
   <main className="flex-1 m-4 p-4 sm:m-6 sm:p-6 md:m-12 md:p-12">

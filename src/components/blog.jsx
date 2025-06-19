@@ -1,9 +1,22 @@
+import { useNavigate, useParams } from "react-router-dom";
 import React from "react";
 import { motion } from "framer-motion";
 import { ArrowLeft, ArrowRight } from "lucide-react";
-import { blogPosts } from "../mock_data.jsx";
 import { Button } from "./button";
 import { DecoderText } from "./decoder_text";
+
+const posts = import.meta.glob("/src/content/blog/*.mdx", { eager: true });
+
+const blogPosts = Object.keys(posts)
+  .map((file) => {
+    const slug = file.split("/").pop().replace(".mdx", "");
+    return {
+      slug,
+      ...posts[file].frontmatter,
+      Content: posts[file].default,
+    };
+  })
+  .sort((a, b) => new Date(b.date) - new Date(a.date));
 
 const ArticleEntry = ({
   post,
@@ -51,9 +64,10 @@ const ArticleEntry = ({
   </motion.div>
 );
 
-export const BlogPage = ({ animationsReady, onSelectPost }) => {
+export const BlogPage = ({ animationsReady }) => {
   const featuredPost = blogPosts.find((p) => p.featured);
   const latestPosts = blogPosts.filter((p) => !p.featured);
+  const navigate = useNavigate();
 
   return (
     <main className="flex-1 flex flex-col md:flex-row p-4 sm:p-6 md:p-12 md:m-12 gap-10">
@@ -75,7 +89,7 @@ export const BlogPage = ({ animationsReady, onSelectPost }) => {
                 delay={0.2 * (index + 1)}
                 animationsReady={animationsReady}
                 isFeatured={false}
-                onClick={() => onSelectPost(post)}
+                onClick={() => navigate(`/blog/${post.slug}`)}
               />
               {index < latestPosts.length - 1 && (
                 <hr className="border-gray-800 my-4" />
@@ -108,7 +122,7 @@ export const BlogPage = ({ animationsReady, onSelectPost }) => {
                 delay={0.4}
                 animationsReady={animationsReady}
                 isFeatured={true}
-                onClick={() => onSelectPost(featuredPost)}
+                onClick={() => navigate(`/blog/${featuredPost.slug}`)}
               />
             )}
           </div>
@@ -118,37 +132,50 @@ export const BlogPage = ({ animationsReady, onSelectPost }) => {
   );
 };
 
-export const BlogDetailPage = ({ post, onBack, animationsReady }) => (
-  <main className="flex-1 p-4 sm:p-6 md:p-12 m-4 sm:m-6 md:m-12">
-    <div className="max-w-4xl mx-auto">
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.5 }}
-      >
-        <Button onClick={onBack} secondary icon={<ArrowLeft />}>
-          Back to articles
-        </Button>
+export const BlogDetailPage = ({ animationsReady }) => {
+  const { slug } = useParams();
+  const navigate = useNavigate();
+  const post = blogPosts.find((p) => p.slug === slug);
+
+  if (!post) return null; // Or a 404 component
+  const { Content } = post;
+  return (
+    <main className="flex-1 p-4 sm:p-6 md:p-12 m-4 sm:m-6 md:m-12">
+      <div className="max-w-4xl mx-auto">
         <motion.div
-          className="my-8"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.5 }}
+        >
+          <Button
+            onClick={() => navigate("/blog")}
+            secondary
+            icon={<ArrowLeft />}
+          >
+            Back to articles
+          </Button>
+          <motion.div
+            className="my-8"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+          >
+            <div className="h-px w-16 bg-cyan-400 mb-3"></div>
+            <p className="font-body text-sm text-gray-400 mb-2">{post.date}</p>
+            <h1 className="font-display text-4xl md:text-6xl font-bold text-white">
+              {post.title}
+            </h1>
+          </motion.div>
+        </motion.div>
+        <motion.div
+          className="blog-content font-body text-lg text-gray-300 leading-relaxed"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.2 }}
+          transition={{ duration: 0.5, delay: 0.5 }}
         >
-          <div className="h-px w-16 bg-cyan-400 mb-3"></div>
-          <p className="font-body text-sm text-gray-400 mb-2">{post.date}</p>
-          <h1 className="font-display text-4xl md:text-6xl font-bold text-white">
-            {post.title}
-          </h1>
+          <Content />
         </motion.div>
-      </motion.div>
-      <motion.div
-        className="blog-content font-body text-lg text-gray-300 leading-relaxed"
-        dangerouslySetInnerHTML={{ __html: post.content }}
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.5 }}
-      />
-    </div>
-  </main>
-);
+      </div>
+    </main>
+  );
+};
