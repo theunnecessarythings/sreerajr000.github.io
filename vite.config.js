@@ -5,6 +5,7 @@ import remarkFrontmatter from "remark-frontmatter";
 import remarkMdxFrontmatter from "remark-mdx-frontmatter";
 
 export default defineConfig({
+  base: "sreeraj.in",
   plugins: [
     react(),
     mdx({

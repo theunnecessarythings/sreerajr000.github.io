@@ -1,7 +1,8 @@
 import React from "react";
 import { motion } from "framer-motion";
 import { DecoderText } from "./decoder_text";
-import { Github, Linkedin, Youtube } from "lucide-react";
+import { Github, Linkedin, Youtube, ArrowRight } from "lucide-react";
+import { Button } from "./button";
 
 const animations = {
   initial: { opacity: 0, y: 20 },
@@ -72,6 +73,20 @@ export const HomePage = ({ animationsReady }) => (
       >
         <Youtube size={24} />
       </a>
+    </motion.div>
+
+    <motion.div
+      initial={animations.initial}
+      animate={animations.animate}
+      transition={{ duration: 0.6, delay: 1.4 }}
+      className="flex flex-wrap gap-4 mt-12"
+    >
+      <Button to="/projects" iconEnd={<ArrowRight />}>
+        View my work
+      </Button>
+      <Button to="/about" secondary>
+        More about me
+      </Button>
     </motion.div>
   </main>
 );
