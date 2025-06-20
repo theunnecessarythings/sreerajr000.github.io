@@ -1,0 +1,33 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Sreeraj Ramachandran - Page Not Found</title>
+    <script type="text/javascript">
+      // Get the current path from the URL.
+      // e.g., on https://user.github.io/repo/about, this gets /repo/about
+      var path = window.location.pathname;
+
+      // Get the segment of the path that represents the repo name.
+      // This is necessary because GitHub Pages hosts projects in subdirectories.
+      var repo = path.startsWith("/") ? path.split("/")[1] : null;
+
+      // Construct the redirect URL.
+      // This preserves the full path, query parameters, and hash.
+      var redirect =
+        window.location.protocol +
+        "//" +
+        window.location.host +
+        "/" +
+        (repo ? repo + "/" : "") +
+        "?p=" +
+        encodeURIComponent(path) +
+        window.location.search +
+        window.location.hash;
+
+      // Perform the redirect.
+      window.location.replace(redirect);
+    </script>
+  </head>
+  <body></body>
+</html>
