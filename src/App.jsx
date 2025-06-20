@@ -8,29 +8,17 @@ import {
   Briefcase,
   FileText,
   BookOpen,
-  Github,
-  Linkedin,
-  Instagram,
   Sun,
   Moon,
-  ArrowRight,
-  ArrowLeft,
-  Server,
-  Feather,
-  ExternalLink,
-  Image as ImageIcon,
-  X,
+  ImageIcon,
 } from "lucide-react";
 import { FluidBackground } from "./components/fluid_bg.jsx";
 import { AnimatePresence } from "framer-motion";
-import { Button } from "./components/button";
-import { DecoderText } from "./components/decoder_text";
 import {
   CursorFollowerProvider,
   CursorFollower,
 } from "./components/cursor_follower";
-import { ReactIcon, NodeIcon, ThreeJSIcon } from "./components/icons";
-import { CustomLogo, ToolkitItem, FullscreenImage } from "./components/ui";
+import { CustomLogo, FullscreenImage } from "./components/ui";
 import { HomePage } from "./components/home";
 import { AboutPage } from "./components/about";
 import { BlogPage, BlogDetailPage } from "./components/blog";
@@ -40,6 +28,7 @@ import {
 } from "./components/publications";
 import { ProjectsPage, ProjectDetailPage } from "./components/projects";
 import { GalleryPage } from "./components/gallery";
+import { galleryData } from "./gallery_data.jsx";
 
 const navItems = [
   { to: "/", label: "home", icon: <Home size={24} /> },
@@ -59,7 +48,8 @@ const MainLayout = ({ theme, toggleTheme }) => {
 
   return (
     <>
-      <aside className="hidden md:flex flex-col items-center justify-between w-20 py-8 border-r border-gray-500/30">
+      {/* Sidebar for desktop */}
+      <aside className="hidden md:flex flex-col items-center justify-between w-20 py-8 border-r border-gray-500/30 fixed top-0 left-0 h-full">
         <Link to="/">
           <CustomLogo />
         </Link>
@@ -85,12 +75,18 @@ const MainLayout = ({ theme, toggleTheme }) => {
           {theme === "dark" ? <Sun size={24} /> : <Moon size={24} />}
         </button>
       </aside>
-      <div className="flex-1 flex overflow-y-auto">
+
+      {/* Main content area */}
+      <div className="flex-1 flex overflow-y-auto md:ml-20">
         <Outlet />
       </div>
+
+      {/* Footer copyright */}
       <div className="hidden md:block absolute bottom-8 right-8 text-xs text-gray-500">
         © 2025 Sreeraj Ramachandran. All rights reserved.
       </div>
+
+      {/* Header for mobile */}
       <header className="md:hidden absolute top-0 left-0 right-0 flex justify-between items-center p-4">
         <Link to="/">
           <CustomLogo />
@@ -102,6 +98,8 @@ const MainLayout = ({ theme, toggleTheme }) => {
           {theme === "dark" ? <Sun size={24} /> : <Moon size={24} />}{" "}
         </button>
       </header>
+
+      {/* Footer navigation for mobile */}
       <footer className="md:hidden fixed bottom-0 left-0 right-0 bg-gray-900/80 backdrop-blur-sm border-t border-gray-500/30">
         <nav className="flex justify-around items-center p-4">
           {navItems.map((item) => (
@@ -157,11 +155,12 @@ export default function App() {
         }
         .font-display { font-family: 'DM Serif Display', serif; }
         .font-body { font-family: 'Roboto', sans-serif; }
+        .font-serif { font-family: 'DM Serif Display', serif; }
         .button {
             height: 44px;
             padding: 0 var(--spaceL);
             cursor: pointer;
-            transition: background 0.3s, color 0.3s, opacity 0.3s;
+            transition: all 0.3s;
             display: inline-flex;
             align-items: center;
             justify-content: center;
@@ -209,7 +208,7 @@ export default function App() {
             cursor: pointer;
         }
         .list-item-hover-effect::after {
-             content: ''; position: absolute; inset: -1rem;
+            content: ''; position: absolute; inset: -1rem;
             background-color: rgba(31, 41, 55, 0.5);
             transform: scaleX(0);
             transition: transform 0.4s var(--bezierFastoutSlowin);
@@ -243,14 +242,23 @@ export default function App() {
     return () => clearTimeout(timeout);
   }, [location.pathname]);
 
+  const handleImageNavigation = (direction) => {
+    if (fullscreenImage === null) return;
+    const newIndex =
+      direction === "next"
+        ? (fullscreenImage + 1) % galleryData.length
+        : (fullscreenImage - 1 + galleryData.length) % galleryData.length;
+    setFullscreenImage(newIndex);
+  };
   return (
     <CursorFollowerProvider>
       <CursorFollower />
       <AnimatePresence>
-        {fullscreenImage && (
+        {fullscreenImage !== null && (
           <FullscreenImage
             src={fullscreenImage}
             onClose={() => setFullscreenImage(null)}
+            onNavigate={handleImageNavigation}
           />
         )}
       </AnimatePresence>

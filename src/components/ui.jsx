@@ -1,5 +1,9 @@
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import React from "react";
+import { galleryData } from "../gallery_data";
+import { useNavigate } from "react-router-dom";
 
 export const CustomLogo = () => (
   <div className="flex items-center gap-1.5">
@@ -24,26 +28,85 @@ export const ToolkitItem = ({ icon, name, delay }) => (
   </motion.div>
 );
 
-export const FullscreenImage = ({ src, onClose }) => (
-  <motion.div
-    className="fixed inset-0 z-50 flex items-center justify-center bg-black/90"
-    initial={{ opacity: 0 }}
-    animate={{ opacity: 1 }}
-    exit={{ opacity: 0 }}
-    onClick={onClose}
-  >
-    <motion.img
-      src={src}
-      className="max-w-[90vw] max-h-[90vh] object-contain"
-      initial={{ scale: 0.8 }}
-      animate={{ scale: 1 }}
-      exit={{ scale: 0.8 }}
-    />
-    <button
+export const FullscreenImage = ({ src, onClose, onNavigate }) => {
+  const currentIndex = src;
+  if (currentIndex === null) return null;
+
+  const image = galleryData[currentIndex];
+
+  const variants = {
+    enter: (direction) => ({
+      x: direction > 0 ? "100%" : "-100%",
+      opacity: 0,
+    }),
+    center: {
+      x: 0,
+      opacity: 1,
+    },
+    exit: (direction) => ({
+      x: direction < 0 ? "100%" : "-100%",
+      opacity: 0,
+    }),
+  };
+
+  const direction = 1;
+
+  return (
+    <motion.div
+      className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
       onClick={onClose}
-      className="absolute top-6 right-6 text-white hover:text-yellow-400"
     >
-      <X size={32} />
-    </button>
-  </motion.div>
-);
+      {/* Close Button */}
+      <button
+        className="absolute top-6 right-6 text-gray-400 hover:text-white transition-colors z-50"
+        onClick={onClose}
+      >
+        <X size={32} />
+      </button>
+
+      {/* Prev Button */}
+      <button
+        className="absolute left-4 sm:left-8 text-white/50 hover:text-white transition-colors z-50 p-4"
+        onClick={(e) => {
+          e.stopPropagation();
+          onNavigate("prev");
+        }}
+      >
+        <ChevronLeft size={48} />
+      </button>
+
+      {/* Next Button */}
+      <button
+        className="absolute right-4 sm:right-8 text-white/50 hover:text-white transition-colors z-50 p-4"
+        onClick={(e) => {
+          e.stopPropagation();
+          onNavigate("next");
+        }}
+      >
+        <ChevronRight size={48} />
+      </button>
+
+      <AnimatePresence initial={false} custom={direction}>
+        <motion.img
+          key={currentIndex}
+          src={image.src}
+          alt={image.alt}
+          className="max-w-[90vw] max-h-[90vh] object-contain rounded-lg shadow-2xl"
+          variants={variants}
+          initial="enter"
+          animate="center"
+          exit="exit"
+          transition={{
+            x: { type: "spring", stiffness: 300, damping: 30 },
+            opacity: { duration: 0.2 },
+          }}
+          custom={direction}
+          onClick={(e) => e.stopPropagation()} // Prevent closing when clicking the image
+        />
+      </AnimatePresence>
+    </motion.div>
+  );
+};

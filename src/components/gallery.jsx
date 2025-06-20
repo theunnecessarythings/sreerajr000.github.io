@@ -19,13 +19,17 @@ export const GalleryPage = ({ animationsReady, onSelectImage }) => (
         {galleryData.map((item, index) => (
           <motion.div
             key={item.id}
-            className="mb-4 break-inside-avoid cursor-pointer"
+            className="mb-4 break-inside-avoid cursor-pointer group"
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.5, delay: 0.4 + 0.1 * index }}
-            onClick={() => onSelectImage(item.src)}
+            onClick={() => onSelectImage(index)}
           >
-            <img src={item.src} alt={item.alt} className="w-full h-auto" />
+            <img
+              src={item.src}
+              alt={item.alt}
+              className="w-full h-auto rounded-lg transition-all duration-300 ease-in-out opacity-80 group-hover:opacity-100 group-hover:scale-105"
+            />
           </motion.div>
         ))}
       </div>

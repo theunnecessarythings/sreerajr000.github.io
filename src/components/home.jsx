@@ -1,33 +1,77 @@
 import React from "react";
+import { motion } from "framer-motion";
 import { DecoderText } from "./decoder_text";
-import { Github, Linkedin, Instagram } from "lucide-react";
+import { Github, Linkedin, Youtube } from "lucide-react";
+
+const animations = {
+  initial: { opacity: 0, y: 20 },
+  animate: { opacity: 1, y: 0 },
+};
 
 export const HomePage = ({ animationsReady }) => (
   <main className="flex-1 flex flex-col items-center justify-center text-center m-4 p-4">
-    <p className="font-body text-lg md:text-xl font-light text-gray-300 tracking-widest uppercase mb-4">
-      I am
-    </p>
-    <div className="flex flex-col items-center justify-center -space-y-3 md:-space-y-5">
-      <div
-        className="layered-title font-display text-5xl md:text-7xl font-bold text-white h-20 md:h-28 flex items-center justify-center"
+    <motion.div
+      initial={animations.initial}
+      animate={animations.animate}
+      transition={{ duration: 0.6, delay: 0.1 }}
+      className="flex flex-col items-center"
+    >
+      <h1
+        className="layered-title shadow-md font-display text-5xl md:text-8xl font-bold text-white mb-4"
         data-text="Sreeraj Ramachandran"
+        style={{ textShadow: "0 0 10px rgba(255,255,255,0.1)" }}
       >
-        <DecoderText text="Sreeraj Ramachandran" start={animationsReady} />
-      </div>
-    </div>
-    <p className="font-body text-lg md:text-xl font-light text-gray-300 tracking-wider h-10 flex items-center justify-center mt-6 overflow-hidden">
-      <DecoderText text="PhD" start={animationsReady} delay={1500} />
-    </p>
-    <div className="flex gap-6 mt-8">
-      <a href="#" className="text-gray-400 hover:text-white transition-colors">
+        <motion.span
+          initial={{ opacity: 0, y: -20, filter: "blur(10px)" }}
+          animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+          transition={{ duration: 0.6, delay: 0.2 }}
+        >
+          Sreeraj Ramachandran
+        </motion.span>
+      </h1>
+      <motion.p
+        initial={animations.initial}
+        animate={animations.animate}
+        transition={{ duration: 0.6, delay: 0.8 }}
+        className="font-serif text-lg md:text-xl text-gray-200 max-w-2xl mt-8 leading-relaxed"
+      >
+        I build wonderfully{" "}
+        <span className="text-gray-800 p-1 bg-white shadow-lg font-medium tracking-wide">
+          <strong>unnecessary things.</strong>
+        </span>
+      </motion.p>
+    </motion.div>
+
+    <motion.div
+      initial={animations.initial}
+      animate={animations.animate}
+      transition={{ duration: 0.6, delay: 1.2 }}
+      className="flex gap-6 mt-8"
+    >
+      <a
+        href="https://github.com/theunnecessarythings"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-gray-400 hover:text-amber-400 transition-colors"
+      >
         <Github size={24} />
       </a>
-      <a href="#" className="text-gray-400 hover:text-white transition-colors">
+      <a
+        href="https://www.linkedin.com/in/sreeraj-r-1b9b4542/"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-gray-400 hover:text-amber-400 transition-colors"
+      >
         <Linkedin size={24} />
       </a>
-      <a href="#" className="text-gray-400 hover:text-white transition-colors">
-        <Instagram size={24} />
+      <a
+        href="https://www.youtube.com/@TheUnnecessaryThings"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-gray-400 hover:text-amber-400 transition-colors"
+      >
+        <Youtube size={24} />
       </a>
-    </div>
+    </motion.div>
   </main>
 );

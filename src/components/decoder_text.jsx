@@ -25,7 +25,7 @@ export const DecoderText = React.memo(
     const output = useRef([{ type: CharType.Glyph, value: "" }]);
     const container = useRef();
     const reduceMotion = useMockReducedMotion();
-    const decoderSpring = useFramerSpring(0, { stiffness: 40, damping: 10 });
+    const decoderSpring = useFramerSpring(0, { stiffness: 50, damping: 20 });
 
     useEffect(() => {
       const containerInstance = container.current;
