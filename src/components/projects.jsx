@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { ArrowLeft, ExternalLink } from "lucide-react";
 import { Button } from "./button";
 import { DecoderText } from "./decoder_text";
+import { Comments } from "./comments";
 
 const posts = import.meta.glob("/src/content/projects/*.mdx", { eager: true });
 
@@ -299,6 +300,7 @@ export const ProjectDetailPage = ({ animationsReady }) => {
               </Button>
             )}
           </motion.div>
+          <Comments />
         </motion.div>
       </div>
     </main>

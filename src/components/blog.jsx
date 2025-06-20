@@ -4,6 +4,7 @@ import { motion } from "framer-motion";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import { Button } from "./button";
 import { DecoderText } from "./decoder_text";
+import { Comments } from "./comments";
 
 const posts = import.meta.glob("/src/content/blog/*.mdx", { eager: true });
 
@@ -284,6 +285,7 @@ export const BlogDetailPage = ({ animationsReady }) => {
           transition={{ duration: 0.5, delay: 0.5 }}
         >
           <Content />
+          <Comments />
         </motion.div>
       </div>
     </main>
