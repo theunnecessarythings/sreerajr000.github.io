@@ -39,10 +39,12 @@ const ArticleEntry = ({
     transition={{ duration: 0.5, delay }}
     onClick={!post.comingSoon ? onClick : undefined}
   >
-    <div className="h-px w-16 bg-cyan-400 mb-3"></div>
+    <div className="h-px w-16 bg-cyan-400 mb-3" />
     <p className="font-body text-sm text-gray-400 mb-2">{post.date}</p>
     <h3
-      className={`font-display font-bold text-white mb-3 ${isFeatured ? "text-4xl" : "text-2xl"}`}
+      className={`font-display font-bold text-white mb-3 ${
+        isFeatured ? "text-4xl" : "text-2xl"
+      }`}
     >
       {!post.comingSoon ? (
         <DecoderText
@@ -64,7 +66,7 @@ const ArticleEntry = ({
                 key={tag}
                 className="text-xs bg-cyan-400/10 text-cyan-400 px-2 py-1 rounded-full hover:bg-cyan-400/20 transition-colors"
                 onClick={(e) => {
-                  e.stopPropagation(); // Prevent article click
+                  e.stopPropagation();
                   onTagClick(tag);
                 }}
               >
@@ -75,14 +77,11 @@ const ArticleEntry = ({
         )}
       </>
     )}
-
     <div className="flex justify-between items-center mt-4">
-      {!post.comingSoon ? (
+      {!post.comingSoon && (
         <Button secondary to={`/blog/${post.slug}`} iconEnd={<ArrowRight />}>
           Read article
         </Button>
-      ) : (
-        <div className="font-body text-gray-600"></div>
       )}
       {post.readTime && (
         <span className="font-mono text-xs text-gray-500">{post.readTime}</span>
@@ -94,32 +93,47 @@ const ArticleEntry = ({
 export const BlogPage = ({ animationsReady }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedTag, setSelectedTag] = useState(searchParams.get("tag"));
+  const [currentPage, setCurrentPage] = useState(1);
   const navigate = useNavigate();
 
-  const featuredPost = blogPosts.find((p) => p.featured);
-  const latestPosts = blogPosts.filter((p) => !p.featured);
-
+  const featuredPosts = blogPosts.filter((p) => p.featured);
+  const latestPosts = blogPosts;
   const allTags = [...new Set(latestPosts.flatMap((p) => p.tags || []))];
 
   useEffect(() => {
     setSelectedTag(searchParams.get("tag"));
   }, [searchParams]);
 
+  // Reset to page 1 whenever the filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedTag]);
+
   const handleTagSelect = (tag) => {
     setSelectedTag(tag);
     if (tag) {
-      setSearchParams({ tag: tag });
+      setSearchParams({ tag });
     } else {
       setSearchParams({});
     }
   };
 
   const filteredPosts = selectedTag
-    ? latestPosts.filter((p) => p.tags && p.tags.includes(selectedTag))
+    ? latestPosts.filter((p) => p.tags?.includes(selectedTag))
     : latestPosts;
+
+  // pagination logic
+  const postsPerPage = 4;
+  const totalPages = Math.ceil(filteredPosts.length / postsPerPage);
+  const startIndex = (currentPage - 1) * postsPerPage;
+  const paginatedPosts = filteredPosts.slice(
+    startIndex,
+    startIndex + postsPerPage,
+  );
 
   return (
     <main className="flex-1 flex flex-col md:flex-row p-4 sm:p-6 md:p-12 md:m-12 gap-10">
+      {/* Left column: paginated posts */}
       <div className="md:w-6/12 lg:w-6/12 flex-shrink-0">
         <motion.h2
           className="layered-title font-display text-3xl font-bold text-white mb-8 py-4"
@@ -132,7 +146,7 @@ export const BlogPage = ({ animationsReady }) => {
         </motion.h2>
 
         <motion.div
-          className="flex flex-wrap gap-2 mb-10"
+          className="flex flex-wrap gap-2 mb-6"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.2 }}
@@ -162,8 +176,8 @@ export const BlogPage = ({ animationsReady }) => {
           ))}
         </motion.div>
 
-        <div className="space-y-6">
-          {filteredPosts.map((post, index) => (
+        <div className="space-y-6 py-4">
+          {paginatedPosts.map((post, index) => (
             <React.Fragment key={post.slug}>
               <ArticleEntry
                 post={post}
@@ -173,18 +187,43 @@ export const BlogPage = ({ animationsReady }) => {
                 onClick={() => navigate(`/blog/${post.slug}`)}
                 onTagClick={handleTagSelect}
               />
-              {index < filteredPosts.length - 1 && (
+              {index < paginatedPosts.length - 1 && (
                 <hr className="border-gray-800 my-4" />
               )}
             </React.Fragment>
           ))}
         </div>
+
+        {/* pagination controls */}
+        {totalPages > 1 && (
+          <div className="flex justify-center items-center gap-4 mt-8">
+            <Button
+              secondary
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+            >
+              Previous
+            </Button>
+            <span className="text-gray-300">
+              Page {currentPage} of {totalPages}
+            </span>
+            <Button
+              secondary
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+            >
+              Next
+            </Button>
+          </div>
+        )}
       </div>
 
+      {/* Right column: Featured posts */}
       <div className="md:w-6/12 lg:w-6/12">
-        {featuredPost && (
+        {featuredPosts.map((featuredPost) => (
           <motion.div
-            className="h-full bg-gray-800/20 border border-gray-700/50 p-6 md:p-8 flex flex-col group relative overflow-hidden"
+            key={featuredPost.slug}
+            className="h-[400px] bg-gray-800/20 border border-gray-700/50 p-6 md:p-8 flex flex-col group relative overflow-hidden"
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.5, delay: 0.2 }}
@@ -194,7 +233,7 @@ export const BlogPage = ({ animationsReady }) => {
               <div
                 className="absolute inset-0 bg-cover bg-center transition-transform duration-500 ease-in-out group-hover:scale-105"
                 style={{ backgroundImage: `url(${featuredPost.imageUrl})` }}
-              ></div>
+              />
             </div>
             <div className="relative z-10">
               <p className="font-body text-sm font-bold text-yellow-400 mb-4">
@@ -210,7 +249,7 @@ export const BlogPage = ({ animationsReady }) => {
               />
             </div>
           </motion.div>
-        )}
+        ))}
       </div>
     </main>
   );
@@ -238,8 +277,8 @@ export const BlogDetailPage = ({ animationsReady }) => {
   }
   const { Content } = post;
   return (
-    <main className="flex-1 p-4 sm:p-6 md:p-12 m-4 sm:m-6 md:m-12">
-      <div className="max-w-4xl mx-auto">
+    <main className="flex-1 m-4 sm:m-6 md:m-12">
+      <div className="bg-black/10 rounded-lg border-gray-800 border p-4 sm:p-6 md:p-12 max-w-7xl mx-auto">
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -258,7 +297,7 @@ export const BlogDetailPage = ({ animationsReady }) => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.2 }}
           >
-            <div className="h-px w-16 bg-cyan-400 mb-3"></div>
+            <div className="h-px w-16 bg-cyan-400 mb-3" />
             <p className="font-body text-sm text-gray-400 mb-2">{post.date}</p>
             <h1 className="font-display text-4xl md:text-6xl font-bold text-white">
               {post.title}
@@ -275,6 +314,17 @@ export const BlogDetailPage = ({ animationsReady }) => {
                   </button>
                 ))}
               </div>
+            )}
+            {/* Image  */}
+            {post.imageUrl && (
+              <motion.img
+                src={post.imageUrl}
+                alt={post.title}
+                className="mt-6 mb-0 mx-auto w-auto h-[400px] rounded-lg shadow-lg"
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.5, delay: 0.4 }}
+              />
             )}
           </motion.div>
         </motion.div>

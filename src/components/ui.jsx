@@ -1,9 +1,11 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { X } from "lucide-react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import React from "react";
+import React, { useRef, useEffect } from "react";
 import { galleryData } from "../gallery_data";
 import { useNavigate } from "react-router-dom";
+import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
+import { atomDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 
 export const CustomLogo = () => (
   <div className="flex items-center gap-1.5">
@@ -108,5 +110,121 @@ export const FullscreenImage = ({ src, onClose, onNavigate }) => {
         />
       </AnimatePresence>
     </motion.div>
+  );
+};
+
+// AnimateOnScroll Helper Component
+export const AnimateOnScroll = ({ children, delay = 0 }) => {
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add("opacity-100", "translate-y-0");
+            entry.target.classList.remove("opacity-0", "translate-y-5");
+            observer.unobserve(entry.target);
+          }
+        });
+      },
+      { threshold: 0.1 },
+    );
+
+    const currentRef = ref.current;
+    if (currentRef) {
+      observer.observe(currentRef);
+    }
+
+    return () => {
+      if (currentRef) {
+        observer.unobserve(currentRef);
+      }
+    };
+  }, []);
+
+  return (
+    <div
+      ref={ref}
+      className="opacity-0 translate-y-5 transition-all duration-700"
+      style={{ transitionDelay: `${delay}ms` }}
+    >
+      {children}
+    </div>
+  );
+};
+
+export const Card = ({ children, className = "" }) => {
+  return (
+    <div
+      className={`border border-gray-600 p-6 rounded-lg bg-black/20 shadow-lg ${className}`}
+    >
+      {children}
+    </div>
+  );
+};
+
+// CodeWindow Component
+export const CodeWindow = ({ code, language, title }) => {
+  return (
+    <div className="bg-gray-900/70 border border-gray-700 rounded-lg shadow-lg my-6">
+      <div className="flex items-center justify-between px-4 border-b border-gray-700">
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+          <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
+          <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+        </div>
+        {title && (
+          <p
+            className="text-sm text-white"
+            style={{ fontFamily: "monospace", margin: "4px" }}
+          >
+            {title}
+          </p>
+        )}
+        <div></div>
+      </div>
+      <div className="text-sm">
+        <SyntaxHighlighter
+          language={language}
+          style={atomDark}
+          customStyle={{ background: "transparent", margin: 0, padding: 12 }}
+        >
+          {code}
+        </SyntaxHighlighter>
+      </div>
+    </div>
+  );
+};
+
+// BarChart Component
+export const BarChart = ({ data, options }) => {
+  const chartRef = React.useRef(null);
+  const chartInstance = React.useRef(null);
+
+  React.useEffect(() => {
+    const ChartJS = window.Chart;
+    if (chartInstance.current) {
+      chartInstance.current.destroy();
+    }
+    if (chartRef.current && ChartJS) {
+      const ctx = chartRef.current.getContext("2d");
+      chartInstance.current = new ChartJS(ctx, {
+        type: "bar",
+        data: data,
+        options: options,
+      });
+    }
+    return () => {
+      if (chartInstance.current) {
+        chartInstance.current.destroy();
+      }
+    };
+  }, [data, options]);
+
+  return (
+    <div className="chart-container relative w-full h-[350px] max-w-xl mx-auto">
+      <canvas ref={chartRef}></canvas>
+    </div>
   );
 };
