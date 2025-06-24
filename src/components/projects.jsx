@@ -37,7 +37,7 @@ export const ProjectsPage = ({ animationsReady }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedTag, setSelectedTag] = useState(searchParams.get("tag"));
   const featuredProject = projectsData.find((p) => p.featured);
-  const otherProjects = projectsData.filter((p) => !p.featured);
+  const otherProjects = projectsData;
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -82,9 +82,9 @@ export const ProjectsPage = ({ animationsReady }) => {
           >
             <div className="absolute inset-0 z-0 opacity-20 group-hover:opacity-40 transition-opacity duration-500">
               <div
-                className="absolute inset-0 bg-cover bg-center transition-transform duration-500 ease-in-out group-hover:scale-105"
+                className="absolute inset-0 bg-[length:auto_100%] bg-center transition-opacity duration-500"
                 style={{ backgroundImage: `url(${featuredProject.imageUrl})` }}
-              ></div>
+              />
             </div>
             <div className="relative p-8 bg-black/20">
               <p className="font-body text-sm font-bold text-yellow-400 mb-4">

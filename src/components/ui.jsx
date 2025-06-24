@@ -165,9 +165,14 @@ export const Card = ({ children, className = "" }) => {
 };
 
 // CodeWindow Component
-export const CodeWindow = ({ code, language, title }) => {
+export const CodeWindow = ({ className = "", code, language, title }) => {
   return (
-    <div className="bg-gray-900/70 border border-gray-700 rounded-lg shadow-lg my-6">
+    <div
+      className={
+        "bg-gray-900/70 border border-gray-700 rounded-lg shadow-lg my-6 " +
+        className
+      }
+    >
       <div className="flex items-center justify-between px-4 border-b border-gray-700">
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 bg-red-500 rounded-full"></div>
@@ -228,3 +233,19 @@ export const BarChart = ({ data, options }) => {
     </div>
   );
 };
+
+import { CheckSquare, Square } from "lucide-react";
+
+export const ChecklistItem = ({ text, checked }) => (
+  <li className={`flex items-center ${!checked ? "text-gray-400" : ""}`}>
+    {checked ? (
+      <CheckSquare className="w-5 h-5 text-green-500 flex-shrink-0" />
+    ) : (
+      <Square className="w-5 h-5 text-gray-400 flex-shrink-0" />
+    )}
+    <span
+      className={`ml-3 font-medium ${!checked ? "text-gray-400" : ""}`}
+      dangerouslySetInnerHTML={{ __html: text }}
+    />
+  </li>
+);

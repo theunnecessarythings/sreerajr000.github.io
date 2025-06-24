@@ -1,0 +1,202 @@
+---
+id: tch-models
+title: "tch-models"
+summary: "Torchvision Models for tch-rs library in Rust"
+imageUrl: "/images/tch-models.png"
+tags: ["Rust"]
+featured: false
+date: 2024-03-12
+---
+
+import {CodeWindow, ChecklistItem} from '../../components/ui.jsx'
+import RepoCard from "react-repo-card";
+
+
+  <div className="w-[200px] m-auto my-6">
+    <RepoCard username="theunnecessarythings" repository="tch-models" />
+  </div>
+
+
+This repository provides a collection of popular computer vision models implemented in Rust using the [`tch-rs`](https://www.google.com/search?q=%5Bhttps://github.com/LaurentMazare/tch-rs%5D\(https://github.com/LaurentMazare/tch-rs\)) library, which provides Rust bindings for PyTorch.
+
+## Key Features
+
+  * **Extensive Model Zoo:** A wide range of popular and state-of-the-art computer vision models are available.
+  * **Pre-trained Weights:** Easily load pre-trained weights from the Hugging Face Hub for all supported models, allowing you to use them for inference and transfer learning out of the box.
+  * **Simple API:** A straightforward and easy-to-use API for model loading and inference.
+  * **ImageNet Evaluation Example:** Includes a comprehensive example to evaluate model performance on the ImageNet dataset.
+
+## Available Models
+
+The following models are available in this repository:
+
+  * **AlexNet**
+  * **ConvNeXt** (Base, Small, Tiny, Large)
+  * **DenseNet** (121, 161, 169, 201)
+  * **EfficientNet** (B0-B7, V2-S, V2-M, V2-L)
+  * **GoogLeNet**
+  * **InceptionV3**
+  * **MaxViT**
+  * **MNASNet** (0.5, 0.75, 1.0, 1.3)
+  * **MobileNetV2**
+  * **MobileNetV3** (Small, Large)
+  * **RegNet** (Y-400MF, Y-800MF, Y-1.6GF, Y-3.2GF, Y-8GF, Y-16GF, Y-32GF, Y-128GF and X-400MF, X-800MF, X-1.6GF, X-3.2GF, X-8GF, X-16GF, X-32GF)
+  * **ResNet** (18, 34, 50, 101, 152)
+  * **ResNeXt** (50\_32x4d, 101\_32x8d, 101\_64x4d)
+  * **ShuffleNetV2** (x0.5, x1.0, x1.5, x2.0)
+  * **SqueezeNet** (1.0, 1.1)
+  * **Swin Transformer** (SwinT, SwinS, SwinB, SwinV2T, SwinV2S, SwinV2B)
+  * **VGG** (11, 11\_bn, 13, 13\_bn, 16, 16\_bn, 19, 19\_bn)
+  * **Vision Transformer (ViT)** (ViTB16, ViTB32, ViTBH14, ViTL16, ViTL32)
+  * **WideResNet** (50-2, 101-2)
+
+## Usage
+
+To use `tch-models` in your project, add it as a dependency in your `Cargo.toml` file:
+
+
+<CodeWindow title="Usage" language="toml"
+code={`[dependencies]
+tch-models = { git = "https://github.com/theunnecessarythings/tch-models" }`}/>
+
+### Example
+
+Here's a simple example of how to load a pre-trained ResNet-18 model and perform inference on an image:
+
+<CodeWindow title="Example" language="rust" 
+code={`use anyhow::Result;
+use tch::{vision::imagenet, Device, Tensor};
+use tch_models::vision::models::{load_model, Model};
+
+fn main() -> Result<()> {
+    // Set the device to CUDA if available, otherwise CPU
+    let device = Device::cuda_if_available();
+
+    // Load the pre-trained ResNet-18 model
+    let (model, mut vs, transforms) = load_model(Model::ResNet18, true)?;
+    vs.to(device);
+
+    // Load and preprocess the image
+    let image = imagenet::load_image_and_resize224("path/to/your/image.jpg")?;
+    let image = image.to_device(device);
+    let transformed_image = transforms.forward(&image.unsqueeze(0));
+
+    // Perform inference
+    let output = model.forward_t(&transformed_image, false);
+    let probabilities = output.softmax(-1, tch::Kind::Float);
+
+    // Get the top 5 predictions
+    let top5 = probabilities.topk(5, -1, true, true);
+    println!("Top 5 predictions: {:?}", top5);
+
+    Ok(())
+}`}/>
+
+
+## Running the ImageNet Evaluation Example
+
+This repository includes an example to evaluate the performance of the models on the ImageNet validation dataset.
+
+1.  **Download the ImageNet dataset:** You can download the dataset from the [ImageNet website](http://www.image-net.org/).
+2.  **Set up the dataset directory:** The example expects the ImageNet validation set to be in a directory named `imagenet`.
+3.  **Run the evaluation:**
+<CodeWindow title="Run Evaluation" language="bash" code={`$ cargo run --release --example vision -- --model <MODEL_NAME>`}/>
+
+    Replace `<MODEL_NAME>` with the name of the model you want to evaluate (e.g., `AlexNet`, `ResNet18`, etc.).
+
+## Performance
+
+The following table shows the Top-1 accuracy of the models on the ImageNet validation set, as compared to the original TorchVision implementations.
+      <div className="container mx-auto">
+        {/* Table container with shadow and rounded corners */}
+        <div className="overflow-x-auto shadow-2xl shadow-cyan-500/10 rounded-lg">
+          <table className="w-full text-left">
+            {/* Table Header */}
+            <thead className="text-gray-300 uppercase bg-gray-800">
+              <tr>
+                <th scope="col" className="p-4 ">
+                  Model
+                </th>
+                <th scope="col" className="p-4  text-center tracking-wider">
+                  tch-rs (%)
+                </th>
+                <th scope="col" className="p-4  text-center tracking-wider">
+                  TorchVision (%)
+                </th>
+              </tr>
+            </thead>
+            {/* Table Body */}
+            <tbody>
+              { [
+  { name: 'AlexNet', tchRs: 56.53, torchVision: 56.52 },
+  { name: 'ConvNextBase', tchRs: 84.04, torchVision: 84.06 },
+  { name: 'ConvNextSmall', tchRs: 83.56, torchVision: 83.62 },
+  { name: 'ConvNextTiny', tchRs: 82.47, torchVision: 82.52 },
+  { name: 'ConvNextLarge', tchRs: 84.39, torchVision: 84.41 },
+  { name: 'DenseNet121', tchRs: 74.39, torchVision: 74.43 },
+  { name: 'DenseNet161', tchRs: 77.16, torchVision: 77.14 },
+  { name: 'DenseNet169', tchRs: 75.56, torchVision: 75.60 },
+  { name: 'DenseNet201', tchRs: 76.89, torchVision: 76.90 },
+  { name: 'GoogLeNet', tchRs: 69.75, torchVision: 69.78 },
+  { name: 'InceptionV3', tchRs: 77.18, torchVision: 77.30 },
+  { name: 'MnasNet0_5', tchRs: 67.71, torchVision: 67.73 },
+  { name: 'MnasNet0_75', tchRs: 71.16, torchVision: 71.18 },
+  { name: 'MnasNet1_0', tchRs: 73.42, torchVision: 73.46 },
+  { name: 'MnasNet1_3', tchRs: 76.47, torchVision: 76.51 },
+  { name: 'MobileNetV2', tchRs: 71.70, torchVision: 71.88 },
+  { name: 'MobileNetV3Small', tchRs: 66.00, torchVision: 67.67 },
+  { name: 'MobileNetV3Large', tchRs: 71.27, torchVision: 74.04 },
+  { name: 'RegNetY400MF', tchRs: 73.79, torchVision: 74.05 },
+  { name: 'RegNetY800MF', tchRs: 76.42, torchVision: 76.42 },
+  { name: 'RegNetY1_6GF', tchRs: 77.69, torchVision: 77.95 },
+  { name: 'RegNetY3_2GF', tchRs: 78.81, torchVision: 78.95 },
+  { name: 'RegNetY8GF', tchRs: 79.99, torchVision: 80.03 },
+  { name: 'RegNetY16GF', tchRs: 80.53, torchVision: 80.42 },
+  { name: 'RegNetY32GF', tchRs: 80.91, torchVision: 80.88 },
+  { name: 'RegNetX400MF', tchRs: 72.49, torchVision: 72.83 },
+  { name: 'RegNetX800MF', tchRs: 74.86, torchVision: 75.21 },
+  { name: 'RegNetX1_6GF', tchRs: 77.07, torchVision: 77.04 },
+  { name: 'ResNet18', tchRs: 69.73, torchVision: 69.76 },
+  { name: 'ResNet34', tchRs: 73.29, torchVision: 73.31 },
+  { name: 'ResNet50', tchRs: 76.15, torchVision: 76.13 },
+  { name: 'ResNet101', tchRs: 77.38, torchVision: 77.37 },
+  { name: 'ResNet152', tchRs: 78.33, torchVision: 78.31 },
+  { name: 'ShuffleNetV2X0_5', tchRs: 60.55, torchVision: 60.55 },
+  { name: 'ShuffleNetV2X1_0', tchRs: 69.36, torchVision: 69.36 },
+  { name: 'SqueezeNet1_0', tchRs: 58.07, torchVision: 58.09 },
+  { name: 'SqueezeNet1_1', tchRs: 58.21, torchVision: 58.21 },
+  { name: 'VGG11', tchRs: 69.00, torchVision: 69.02 },
+  { name: 'VGG11BN', tchRs: 70.36, torchVision: 70.37 },
+  { name: 'VGG13', tchRs: 69.91, torchVision: 69.93 },
+  { name: 'VGG13BN', tchRs: 71.58, torchVision: 71.59 },
+  { name: 'VGG16', tchRs: 71.58, torchVision: 71.59 },
+  { name: 'VGG16BN', tchRs: 73.35, torchVision: 73.36 },
+  { name: 'VGG19', tchRs: 72.36, torchVision: 72.38 },
+  { name: 'VGG19BN', tchRs: 74.20, torchVision: 74.22 },
+  { name: 'WideResNet50_2', tchRs: 78.44, torchVision: 78.47 },
+  { name: 'WideResNet101_2', tchRs: 78.84, torchVision: 78.85 },
+  { name: 'ViTB16', tchRs: 81.33, torchVision: 81.07 },
+].map((model, index) => (
+                <tr
+                  key={model.name}
+                  className="border-b border-gray-700 bg-gray-800/50 hover:bg-gray-700/60 transition-colors duration-200"
+                >
+                  <th scope="row" className="p-4 font-medium text-white whitespace-nowrap">
+                    {model.name}
+                  </th>
+                  <td className="p-4 text-center text-cyan-400">{model.tchRs.toFixed(2)}</td>
+                  <td className="p-4 text-center text-green-400">{model.torchVision.toFixed(2)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+## Contributing
+
+Contributions are welcome\! Please feel free to submit a pull request or open an issue for any bugs, feature requests, or new model implementations.
+
+## License
+
+This project is licensed under the [MIT License](https://www.google.com/search?q=LICENSE).

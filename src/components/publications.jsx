@@ -49,11 +49,15 @@ export const PublicationsPage = ({ animationsReady }) => {
                 <div className="grid grid-cols-1 sm:grid-cols-4 gap-6 items-start">
                   {pub.image && (
                     <div className="sm:col-span-1">
-                      <div className="aspect-video rounded-lg overflow-hidden border border-gray-800">
+                      <div className="aspect-video rounded-lg overflow-hidden border border-gray-800 group">
                         <img
                           src={pub.image}
                           alt={pub.title}
-                          className="w-full h-full object-cover transition-all duration-300 ease-in-out group-hover:scale-105 opacity-80 group-hover:opacity-100"
+                          className="
+      h-full w-auto object-contain object-center
+      transition-opacity duration-300 ease-in-out
+      opacity-80 group-hover:opacity-100
+    "
                         />
                       </div>
                     </div>

@@ -487,6 +487,46 @@ export function Blog() {
                 .hljs { background: #020617 !important; color: #E2E8F0 !important; }
                 `}
       </style>
+      {/* Table of Contents */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <nav className="text-center">
+          <ul className="flex flex-col sm:flex-row justify-center space-y-2 sm:space-y-0 sm:space-x-6">
+            <li>
+              <a href="#problem" className="text-white hover:text-yellow-300">
+                Problem
+              </a>
+            </li>
+            <li>
+              <a href="#solution" className="text-white hover:text-yellow-300">
+                Solution
+              </a>
+            </li>
+            <li>
+              <a
+                href="#translation"
+                className="text-white hover:text-yellow-300"
+              >
+                Translation
+              </a>
+            </li>
+            <li>
+              <a
+                href="#performance"
+                className="text-white hover:text-yellow-300"
+              >
+                Performance
+              </a>
+            </li>
+
+            <li>
+              <a href="#github" className="text-white hover:text-yellow-300">
+                GitHub
+              </a>
+            </li>
+          </ul>
+        </nav>
+      </div>
+
       <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-12">
         <section id="problem">
           <p>
