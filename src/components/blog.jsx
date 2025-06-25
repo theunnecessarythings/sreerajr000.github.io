@@ -31,7 +31,7 @@ const ArticleEntry = ({
   <motion.div
     className={
       !isFeatured
-        ? "list-item-hover-effect group -m-4 p-4 cursor-pointer"
+        ? "list-item-hover-effect group m-8 p-4 cursor-pointer"
         : "cursor-pointer"
     }
     initial={{ opacity: 0, y: 20 }}
@@ -41,7 +41,7 @@ const ArticleEntry = ({
   >
     <div className="h-px w-16 bg-cyan-400 mb-3" />
     <p className="font-body text-sm text-gray-400 mb-2">{post.date}</p>
-    <h3
+    <div
       className={`font-display font-bold text-white mb-3 ${
         isFeatured ? "text-4xl" : "text-2xl"
       }`}
@@ -53,7 +53,7 @@ const ArticleEntry = ({
       ) : (
         <span className="text-gray-500">{post.title}</span>
       )}
-    </h3>
+    </div>
     {!post.comingSoon && (
       <>
         <p className="font-body text-gray-300 mb-4">{post.summary}</p>
