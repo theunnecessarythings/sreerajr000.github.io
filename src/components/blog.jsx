@@ -31,7 +31,7 @@ const ArticleEntry = ({
   <motion.div
     className={
       !isFeatured
-        ? "list-item-hover-effect -m-4 p-4 cursor-pointer"
+        ? "list-item-hover-effect group -m-4 p-4 cursor-pointer"
         : "cursor-pointer"
     }
     initial={{ opacity: 0, y: 20 }}
@@ -47,11 +47,9 @@ const ArticleEntry = ({
       }`}
     >
       {!post.comingSoon ? (
-        <DecoderText
-          text={post.title}
-          start={animationsReady}
-          delay={delay + 0.2}
-        />
+        <h3 className="font-display text-2xl text-white font-bold">
+          {post.title}
+        </h3>
       ) : (
         <span className="text-gray-500">{post.title}</span>
       )}
@@ -132,11 +130,11 @@ export const BlogPage = ({ animationsReady }) => {
   );
 
   return (
-    <main className="flex-1 flex flex-col md:flex-row p-4 sm:p-6 md:p-12 md:m-12 gap-10">
+    <main className="flex-1 flex flex-col flex-col-reverse md:flex-row p-4 m-4 sm:p-6 sm:m-6 md:p-12 md:m-12">
       {/* Left column: paginated posts */}
       <div className="md:w-6/12 lg:w-6/12 flex-shrink-0">
         <motion.h2
-          className="layered-title font-display text-3xl font-bold text-white mb-8 py-4"
+          className="layered-title font-display text-4xl md:text-5xl font-bold text-white mb-8 py-4"
           data-text="Latest articles"
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
@@ -217,8 +215,7 @@ export const BlogPage = ({ animationsReady }) => {
           </div>
         )}
       </div>
-
-      {/* Right column: Featured posts */}
+      {/* Right column: featured posts */}
       <div className="md:w-6/12 lg:w-6/12">
         {featuredPosts.map((featuredPost) => (
           <motion.div

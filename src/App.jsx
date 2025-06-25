@@ -77,7 +77,8 @@ const MainLayout = ({ theme, toggleTheme }) => {
       </aside>
 
       {/* Main content area */}
-      <div className="flex-1 flex overflow-y-auto md:ml-20">
+      {/* --- THIS IS THE LINE TO CHANGE --- */}
+      <div className="flex-1 flex overflow-y-auto md:ml-20 pt-20 pb-24 md:pt-0 md:pb-0">
         <Outlet />
       </div>
 
