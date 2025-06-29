@@ -18,7 +18,7 @@ import {
   CursorFollowerProvider,
   CursorFollower,
 } from "./components/cursor_follower";
-import { CustomLogo, FullscreenImage } from "./components/ui";
+import { ScrollToTop, CustomLogo, FullscreenImage } from "./components/ui";
 import { HomePage } from "./components/home";
 import { AboutPage } from "./components/about";
 import { BlogPage, BlogDetailPage } from "./components/blog";
@@ -253,6 +253,7 @@ export default function App() {
   };
   return (
     <CursorFollowerProvider>
+      <ScrollToTop />
       <CursorFollower />
       <AnimatePresence>
         {fullscreenImage !== null && (

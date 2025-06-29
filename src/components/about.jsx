@@ -74,8 +74,8 @@ export const AboutPage = ({ animationsReady }) => (
           <p>
             My work lives at the intersection of machine learning, systems
             programming, and creative technology. I recently completed my PhD,
-            where my research focused on making generative AI models more fair
-            and robust.
+            where my research focused on making AI models more fair and robust
+            using generative AI techniques.
           </p>
           <p>
             Beyond academic research, I have a deep passion for understanding
