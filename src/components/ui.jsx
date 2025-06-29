@@ -189,7 +189,7 @@ export const CodeWindow = ({ className = "", code, language, title }) => {
         )}
         <div></div>
       </div>
-      <div className="text-sm">
+      <div className="text-sm grid">
         <SyntaxHighlighter
           language={language}
           style={atomDark}
