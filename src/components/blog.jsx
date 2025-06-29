@@ -317,7 +317,7 @@ export const BlogDetailPage = ({ animationsReady }) => {
               <motion.img
                 src={post.imageUrl}
                 alt={post.title}
-                className="mt-6 mb-0 mx-auto w-auto h-[400px] rounded-lg shadow-lg"
+                className="mt-6 mb-0 mx-auto w-auto lg:h-[400px] rounded-lg shadow-lg"
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.5, delay: 0.4 }}
