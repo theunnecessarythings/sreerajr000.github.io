@@ -1,5 +1,4 @@
 import React, { useEffect, useRef } from "react";
-
 import * as THREE from "three";
 
 export const FluidBackground = () => {
@@ -8,7 +7,12 @@ export const FluidBackground = () => {
   useEffect(() => {
     if (!canvasRef.current) return;
 
-    // Renderer
+    // --- Mobile Detection ---
+    // A simple check to differentiate mobile from desktop.
+    // You can adjust the 768px threshold as needed.
+    const isMobile = window.innerWidth < 768;
+
+    // --- Common Setup ---
     const renderer = new THREE.WebGLRenderer({
       canvas: canvasRef.current,
       antialias: true,
@@ -17,20 +21,17 @@ export const FluidBackground = () => {
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setPixelRatio(window.devicePixelRatio);
 
-    // Scene & Camera
     const scene = new THREE.Scene();
     const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
 
-    // Uniforms
     const uniforms = {
       u_time: { value: 0.0 },
-      u_mouse: { value: new THREE.Vector2(0.5, 0.5) },
+      u_mouse: { value: new THREE.Vector2(0.5, 0.5) }, // Default to center
       u_resolution: {
         value: new THREE.Vector2(window.innerWidth, window.innerHeight),
       },
     };
 
-    // Geometry & Shader Material
     const geometry = new THREE.PlaneGeometry(2, 2);
     const material = new THREE.ShaderMaterial({
       uniforms,
@@ -40,6 +41,7 @@ export const FluidBackground = () => {
         }
       `,
       fragmentShader: `
+        // (Your fragment shader code remains exactly the same)
         uniform vec2 u_resolution;
         uniform float u_time;
         uniform vec2 u_mouse;
@@ -86,44 +88,67 @@ export const FluidBackground = () => {
       `,
     });
 
-    // Mesh
     const mesh = new THREE.Mesh(geometry, material);
     scene.add(mesh);
 
-    // Clock
-    const clock = new THREE.Clock();
+    if (isMobile) {
+      // --- MOBILE: Static Render Logic ---
 
-    // Event Handlers
-    const handleMouseMove = (e) => {
-      uniforms.u_mouse.value.x = e.clientX / window.innerWidth;
-      uniforms.u_mouse.value.y = 1.0 - e.clientY / window.innerHeight;
-      // material.needsUpdate = true; // <— mark material dirty after mouse change
-    };
-    const handleResize = () => {
-      renderer.setSize(window.innerWidth, window.innerHeight);
-      uniforms.u_resolution.value.set(window.innerWidth, window.innerHeight);
-      // material.needsUpdate = true; // <— mark material dirty after resize
-    };
-    window.addEventListener("mousemove", handleMouseMove);
-    window.addEventListener("resize", handleResize);
+      // Give it a fixed time value for a more interesting pattern than t=0
+      uniforms.u_time.value = 10.0;
 
-    // Animation Loop
-    const animate = () => {
-      uniforms.u_time.value = clock.getElapsedTime();
-      // material.needsUpdate = true; // <— mark material dirty before each render if time changes
+      // Render the scene once and stop.
       renderer.render(scene, camera);
-      requestAnimationFrame(animate);
-    };
-    animate();
 
-    // Cleanup
-    return () => {
-      window.removeEventListener("mousemove", handleMouseMove);
-      window.removeEventListener("resize", handleResize);
-      geometry.dispose();
-      material.dispose();
-      renderer.dispose();
-    };
+      // We still need a resize handler for screen rotation
+      const handleResizeMobile = () => {
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        uniforms.u_resolution.value.set(window.innerWidth, window.innerHeight);
+        // Re-render the single frame on resize
+        renderer.render(scene, camera);
+      };
+      window.addEventListener("resize", handleResizeMobile);
+
+      // Cleanup for mobile
+      return () => {
+        window.removeEventListener("resize", handleResizeMobile);
+        geometry.dispose();
+        material.dispose();
+        renderer.dispose();
+      };
+    } else {
+      // --- DESKTOP: Animation Logic ---
+
+      const clock = new THREE.Clock();
+
+      const handleMouseMove = (e) => {
+        uniforms.u_mouse.value.x = e.clientX / window.innerWidth;
+        uniforms.u_mouse.value.y = 1.0 - e.clientY / window.innerHeight;
+      };
+      const handleResize = () => {
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        uniforms.u_resolution.value.set(window.innerWidth, window.innerHeight);
+      };
+
+      window.addEventListener("mousemove", handleMouseMove);
+      window.addEventListener("resize", handleResize);
+
+      const animate = () => {
+        uniforms.u_time.value = clock.getElapsedTime();
+        renderer.render(scene, camera);
+        requestAnimationFrame(animate);
+      };
+      animate();
+
+      // Cleanup for desktop
+      return () => {
+        window.removeEventListener("mousemove", handleMouseMove);
+        window.removeEventListener("resize", handleResize);
+        geometry.dispose();
+        material.dispose();
+        renderer.dispose();
+      };
+    }
   }, []);
 
   return <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />;
