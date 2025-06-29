@@ -1,14 +1,129 @@
 ---
 id: 3
 featured: false
-date: "June 5, 2025"
+date: "June 19, 2025"
 title: "GPT2 From Scratch in PTX - Part III (Encoder Kernel)"
-summary: ""
-readTime: "00:07:53:60"
+summary: "This time, I'm tackling the encoder kernel: turning token IDs into vectors. It's a journey into memory access patterns and vectorized loads in PTX."
+readTime: "00:06:30:00"
 imageUrl: "/images/llm-ptx-03.png"
 tags: ["PTX", "CUDA", "C++"]
 ---
 
 import {App, part3} from './llm-ptx.jsx'
+import {CodeWindow} from '../../components/ui.jsx'
+import RepoCard from "react-repo-card";
+
+<div className="w-[200px] m-auto my-4">
+  <RepoCard username="theunnecessarythings" repository="llm-ptx" />
+</div>
+
+
+Next in line, in terms of complexity is the `encoder` kernel. This time we also get to explore how to optimize memory-bound kernels by efficiently moving data from global memory into registers using vectorization. The encoder layer is the very first step in the transformer architecture. It takes the input token IDs, looks up the corresponding token and positional embeddings, and adds them together. This look-up part is the memory-bound operation that we can make faster using vectorized loads.
+
+In CUDA, that means—loading multiple data points at once. Instead of reading one 32-bit float at a time, we could load a 128-bit `float4`. Following is the reference implementation in CUDA C++, which uses this vectorized approach.
+
+<div className="w-5/6 m-auto">
+<CodeWindow title="CUDA C++ Kernel" language="cpp" code={`__global__ void encoder_fwd_kernel_vec(float *out, const int *inp,
+                                       const float *wte, const float *wpe,
+                                       int B, int T, int C) {
+    int b = blockIdx.y;
+    int t = blockIdx.x;
+    // Each thread now handles 4 float elements, so our grid of threads is smaller
+    int c_vec = threadIdx.x;
+
+    // The starting index for the 4 floats this thread will handle
+    int c_start = c_vec * 4;
+
+    // Boundary Check
+    if (b < B && t < T && c_start < C) {
+      // Get the token index for this position
+      int ix = inp[b * T + t];
+
+      // Get base pointers to the correct rows in the embedding tables
+      const float *wte_row = wte + ix * C;
+      const float *wpe_row = wpe + t * C;
+      float *out_row = out + b * T * C + t * C;
+
+      // Cast pointers to float4 pointers to load 128 bits at once
+      const float4 *wte_ptr = reinterpret_cast<const float4 *>(wte_row + c_start);
+      const float4 *wpe_ptr = reinterpret_cast<const float4 *>(wpe_row + c_start);
+      float4 *out_ptr = reinterpret_cast<float4 *>(out_row + c_start);
+
+      // Load the vectorized data
+      float4 wte_val = *wte_ptr;
+      float4 wpe_val = *wpe_ptr;
+
+      // Perform the additions component-wise
+      float4 out_val;
+      out_val.x = wte_val.x + wpe_val.x;
+      out_val.y = wte_val.y + wpe_val.y;
+      out_val.z = wte_val.z + wpe_val.z;
+      out_val.w = wte_val.w + wpe_val.w;
+
+      // Write the vectorized result back to global memory
+      *out_ptr = out_val;
+    }
+}
+
+void encoder_forward(float *out, int *inp, float *wte, float *wpe, int B, int T,
+                     int C) {
+    // C must be divisible by 4 for this to work
+    assert(C % 4 == 0);
+
+    dim3 grid(T, B);
+    // We launch C/4 threads, as each thread now handles 4 elements
+    dim3 block(std::min(1024, C / 4));
+
+    encoder_fwd_kernel_vec<<<grid, block>>>(out, (int *)inp, wte, wpe, B, T, C);
+    cudaErrorCheck();
+}`} />
+</div>
+
+
+Apart from the vectorized load and store, the rest of the code is a fairly straightforward translation. Following is the line-by-line breakdown.
 
 <App part={part3}/>
+
+
+As you can the only difference here is the usage of the vectorized load/store using 
+`ld.global.v4.f32` and `st. global.v4.f32`. Once the PTX is written, hooking it up to the host code should be familiar by now.
+
+<div className="w-5/6 m-auto">
+<CodeWindow title="C++ Runner" language="cpp" code={`void encoder_forward(float *out, const int *inp, const float *wte,
+                     const float *wpe, int B, int T, int C,
+                     cudaStream_t stream = 0) {
+    static CUmodule module = nullptr;
+    static CUfunction kernel = nullptr;
+
+    assert(C % 4 == 0);
+    if (module == nullptr) {
+      const char *ptx_path = "ptx/encoder_kernel.ptx";
+      cuCheck(cuModuleLoad(&module, ptx_path));
+      cuCheck(cuModuleGetFunction(&kernel, module, "encoder_fwd_kernel"));
+    }
+
+    void *args[] = {&out, &inp, &wte, &wpe, &B, &T, &C};
+
+    cuCheck(cuLaunchKernel(kernel, T, B,
+                           1, // Grid dimensions (x,y,z)
+                           std::min(1024, C / 4), 1,
+                           1,         // Block dimensions (x,y,z)
+                           0,         // Shared memory size in bytes
+                           stream,    // Stream
+                           args,      // Kernel arguments
+                           nullptr)); // Extra options
+
+    cudaErrorCheck();
+}`} />
+</div>
+
+This kernel was a bit different compared to the first two. It was less about math and more about data movement. Getting the pointer arithmetic right in PTX is always a bit tricky, but seeing the vectorized loads work correctly is incredibly satisfying. Next up is the Layer Normalization Kernel. It combines a lot of ideas: complex math, parallel reductions, and a heavy reliance on shared memory. See you there.
+
+<div className="flex justify-between mt-8 pt-4 border-t border-gray-700">
+  <a href="/blog/llm-ptx-02" className="text-blue-400 hover:text-blue-300 font-semibold">
+    ← Previous: The GELU Kernel
+  </a>
+  <a href="/blog/llm-ptx-04" className="text-blue-400 hover:text-blue-300 font-semibold">
+    Next: The Layernorm Kernel →
+  </a>
+</div>

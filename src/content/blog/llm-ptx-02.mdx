@@ -1,14 +1,92 @@
 ---
 id: 2
 featured: false
-date: "June 5, 2025"
+date: "June 12, 2025"
 title: "GPT2 From Scratch in PTX - Part II (Gelu Kernel)"
-summary: ""
-readTime: "00:07:53:60"
+summary: "The journey continues! This post covers the process of handwriting the GELU activation function kernel in PTX"
+readTime: "00:05:12:30"
 imageUrl: "/images/llm-ptx-02.png"
 tags: ["PTX", "CUDA", "C++"]
 ---
 
 import {App, part2} from './llm-ptx.jsx'
+import {CodeWindow} from '../../components/ui.jsx'
+import RepoCard from "react-repo-card";
+
+<div className="w-[200px] m-auto my-4">
+  <RepoCard username="theunnecessarythings" repository="llm-ptx" />
+</div>
+
+Okay, you're here. Hopefully, that means you've already read [Part I](/blog/llm-ptx-01) of the blog series where I went about describing how I translated the basic residual kernel from CUDA to PTX.
+
+I thought it would be smarter to tackle kernels needed for the GPT-2 inference in increasing order of complexity. That makes our next candidate, the GELU kernel(our activation function).
+
+As before, my process started with a clean, reliable CUDA C++ implementation to serve as my ground truth. This is the code I'd be trying to replicate in PTX:
+
+<div className="w-5/6 m-auto">
+<CodeWindow title="CUDA C++ Kernel" language="cpp" code={`#define GELU_SCALING_FACTOR sqrtf(2.0f / M_PI)
+
+__global__ void gelu_fwd_kernel(float *__restrict__ out,
+                                const float *__restrict__ inp, int N) {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i >= N)
+      return;
+    float x = inp[i];
+    float cube = 0.044715f * x * x * x;
+    out[i] = 0.5f * x * (1.0f + tanhf(GELU_SCALING_FACTOR * (x + cube)));
+}
+
+void gelu_forward(float *out, const float *inp, int N,
+                  cudaStream_t stream = 0) {
+    const int THREADS_PER_BLOCK = 1024;
+    int blocks = (N + THREADS_PER_BLOCK - 1) / THREADS_PER_BLOCK;
+    gelu_fwd_kernel<<<blocks, THREADS_PER_BLOCK, 0, stream>>>(out, inp, N);
+    cudaErrorCheck();
+}`} />
+</div>
+
+Translating the above is very similar to the translation of the residual kernel.
+Except we now have quite a bit of arithmetic calculations to be done. And for all of it, we only need to know essentially 3 instructions (`add`, `mul`, and `tanh`). 
+The rest of it is just annoying grunt work of splitting it into multiple instructions and using appropriate registers. All of it is broken down in detail line by line below.
 
 <App part={part2}/>
+
+The C++ host code once again is pretty much identical to the previous one, the only difference here is the arguments that are being passed; load the compiled PTX file as a module, get the specific function, and then launch it with the correct parameters.
+
+<div className="w-5/6 m-auto">
+<CodeWindow title="C++ Runner" language="cpp" code={`void gelu_forward(float *out, const float *inp, int N,
+                  cudaStream_t stream = 0) {
+    static CUmodule module = nullptr;
+    static CUfunction kernel = nullptr;
+
+    if (module == nullptr) {
+      const char *ptx_path = "ptx/gelu_kernel.ptx";
+      cuCheck(cuModuleLoad(&module, ptx_path));
+      cuCheck(cuModuleGetFunction(&kernel, module, "gelu_fwd_kernel"));
+    }
+
+    int blocks_per_grid = (N + THREADS_PER_BLOCK - 1) / THREADS_PER_BLOCK;
+    void *args[] = {&out, &inp, &N};
+
+    cuCheck(cuLaunchKernel(kernel, blocks_per_grid, 1,
+                           1,                       // Grid dimensions (x,y,z)
+                           THREADS_PER_BLOCK, 1, 1, // Block dimensions (x,y,z)
+                           0,                       // Shared memory size in bytes
+                           stream,                  // Stream
+                           args,                    // Kernel arguments
+                           nullptr));               // Extra options
+
+    cudaErrorCheck();
+}`} />
+</div>
+
+Okay, two kernels down. This one felt more like a focused exercise in translating math to low-level instructions. The next kernel (encoder) though, we advance our learning process, we learn about vectorized loads and stores.
+
+<div className="flex justify-between mt-8 pt-4 border-t border-gray-700">
+  <a href="/blog/llm-ptx-01" className="text-blue-400 hover:text-blue-300 font-semibold">
+    ← Previous: Introduction
+  </a>
+  <a href="/blog/llm-ptx-03" className="text-blue-400 hover:text-blue-300 font-semibold">
+    Next: The Encoder Kernel →
+  </a>
+</div>

@@ -1,14 +1,195 @@
 ---
 id: 7
-featured: false
-date: "June 5, 2025"
-title: "GPT2 From Scratch in PTX - Part VII (Matmul Kernel)"
-summary: ""
-readTime: "00:07:53:60"
+featured: true
+date: "July 17, 2025"
+title: "GPT2 From Scratch in PTX - Part VII (The Matmul Kernel)"
+summary: "This post details the process of writing a tiled matrix multiplication (GEMM) kernel in PTX"
+readTime: "00:12:30:90"
 imageUrl: "/images/llm-ptx-07.png"
 tags: ["PTX", "CUDA", "C++"]
 ---
 
 import {App, part7} from './llm-ptx.jsx'
+import {CodeWindow} from '../../components/ui.jsx'
+import RepoCard from "react-repo-card";
+
+<div className="w-[200px] m-auto my-4">
+  <RepoCard username="theunnecessarythings" repository="llm-ptx" />
+</div>
+
+This is it. The last step. Matrix multiplication. GEMM (General Matrix-Matrix Multiplication) is the computational backbone of nearly all deep learning models. The feed-forward networks in GPT-2 are, in essence, just two massive matrix multiplications. All the previous kernels were important, but getting this one right is paramount for performance. Writing an efficient GEMM kernel by hand is a rite of passage in GPU programming.
+
+The key to a fast GEMM is memory management. The goal is to minimize slow reads from global memory and maximize data reuse from the much faster, shared memory. The standard technique to achieve this is *tiling*. The input matrices are broken down into smaller tiles that can fit into shared memory. Each thread block loads these tiles and performs the matrix multiplication on them, accumulating the results in registers. The CUDA C++ reference implements this tiled strategy.
+
+<div className="w-5/6 m-auto">
+<CodeWindow title="CUDA C++ Kernel" language="cpp" code={`__global__ void __launch_bounds__(16 * 16)
+    matmul_fwd_kernel(float *out, const float *inp, const float *weight,
+                      const float *bias, int C, int OC) {
+    // out is (B,T,OC). OC is short for "output channels", e.g. OC = 4 * C
+    // inp is (B, T, C), weight is (OC, C), bias is (OC)
+    // each thread handles 8x8 elements; each block 128 by 128 elements.
+    int oc = 8 * (blockIdx.y * blockDim.y + threadIdx.y);
+
+    // buffers to cache chunks of the input matrices
+    __shared__ float lhs_s[128][32];
+    __shared__ float rhs_s[128][32];
+
+    // adjust our pointers for the current block
+    inp += 128 * blockIdx.x * C;
+    weight += 128 * blockIdx.y * C;
+    out += 128 * blockIdx.x * OC + 128 * blockIdx.y;
+
+    float vals[8][8] = {};
+    if (bias != NULL) {
+      for (int i = 0; i < 8; i++) {
+        for (int j = 0; j < 8; j += 4) {
+          float4 b = ld_vec(bias + oc + j);
+          vals[i][j + 0] = b.x;
+          vals[i][j + 1] = b.y;
+          vals[i][j + 2] = b.z;
+          vals[i][j + 3] = b.w;
+        }
+      }
+    }
+
+    int si_start = 4 * (16 * threadIdx.y + threadIdx.x);
+    for (int so = 0; so < C; so += 32) {
+      __syncthreads();
+      int xmod8 = threadIdx.x % 8;
+      int xby8 = threadIdx.x / 8;
+      int xo = 4 * xmod8;
+      for (int y = 2 * threadIdx.y + xby8; y < 128; y += 32) {
+        st_vec(&lhs_s[y][xo], ld_vec(inp + y * C + so + xo));
+        st_vec(&rhs_s[y][xo], ld_vec(weight + y * C + so + xo));
+      }
+      __syncthreads();
+
+      for (int si = si_start; si < si_start + 32; si += 4) {
+        float4 rhs[8];
+        for (int u = 0; u < 8; ++u) {
+          rhs[u] = ld_vec(&rhs_s[u + 8 * threadIdx.y][si % 32]);
+        }
+
+        for (int ii = 0; ii < 8; ++ii) {
+          float4 lhs = ld_vec(&lhs_s[ii + 8 * threadIdx.x][si % 32]);
+          for (int ji = 0; ji < 8; ++ji) {
+            vals[ii][ji] += lhs.x * rhs[ji].x;
+            vals[ii][ji] += lhs.y * rhs[ji].y;
+            vals[ii][ji] += lhs.z * rhs[ji].z;
+            vals[ii][ji] += lhs.w * rhs[ji].w;
+          }
+        }
+      }
+    }
+
+    for (int i = 0; i < 8; ++i) {
+      for (int j = 0; j < 8; j += 4) {
+        float4 result;
+        result.x = vals[i][j + 0];
+        result.y = vals[i][j + 1];
+        result.z = vals[i][j + 2];
+        result.w = vals[i][j + 3];
+        st_vec(out + (8 * threadIdx.x + i) * OC + 8 * threadIdx.y + j, result);
+      }
+    }
+}
+
+void matmul_forward(float *out, const float *inp, const float *weight,
+                    const float *bias, int B, int T, int C, int OC) {
+    auto sqrt_block_size = 16;
+
+    dim3 gridDim(CEIL_DIV(B * T, 8 * sqrt_block_size),
+                 CEIL_DIV(OC, 8 * sqrt_block_size));
+    dim3 blockDim(sqrt_block_size, sqrt_block_size);
+    matmul_fwd_kernel<<<gridDim, blockDim>>>(out, inp, weight, bias, C, OC);
+    cudaCheck(cudaGetLastError());
+}`} />
+</div>
+
+
+There is nothing new here concept-wise. However, unrolling the loops with constant bounds can be an easy way to improve performance a tiny bit. So that's what I did. 
 
 <App part={part7}/>
+
+Translating this kernel to PTX was, without a doubt, the most arduous task of this entire project. It required careful management of pointers and writing a whole lot of `fma` instructions. The host code is as follows.
+
+<div className="w-5/6 m-auto">
+<CodeWindow title="C++ Runner" language="cpp" code={`void matmul_forward(float *out, const float *inp, const float *weight,
+                    const float *bias, int B, int T, int C, int OC,
+                    cudaStream_t stream = 0) {
+    static CUmodule module = nullptr;
+    static CUfunction kernel = nullptr;
+
+    if (module == nullptr) {
+      const char *ptx_path = "ptx/matmul_kernel.ptx";
+      cuCheck(cuModuleLoad(&module, ptx_path));
+      cuCheck(cuModuleGetFunction(&kernel, module, "matmul_fwd_kernel"));
+    }
+    auto sqrt_block_size = 16;
+
+    dim3 gridDim(CEIL_DIV(B * T, 8 * sqrt_block_size),
+                 CEIL_DIV(OC, 8 * sqrt_block_size));
+    dim3 blockDim(sqrt_block_size, sqrt_block_size);
+
+    void *args[] = {&out, &inp, &weight, &bias, &C, &OC};
+
+    cuCheck(cuLaunchKernel(kernel, gridDim.x, gridDim.y,
+                           1,                         // Grid dimensions (x,y,z)
+                           blockDim.x, blockDim.y, 1, // Block dimensions (x,y,z)
+                           0,         // Shared memory size in bytes
+                           stream,    // Stream
+                           args,      // Kernel arguments
+                           nullptr)); // Extra options
+
+    cudaErrorCheck();
+}`} />
+</div>
+
+And with that, the journey is complete. From a simple `add` operation in the residual kernel to a fully-fledged, tiled matrix multiplication, we've now handwritten every single kernel of a GPT-2 style transformer in PTX. It was a long, often frustrating, but ultimately incredibly rewarding process. The goal was to go one level deeper than CUDA, and I feel like I've come away with a true, low-level understanding of how these models actually execute on the hardware. But you know what, from what I understand the PTX still needs to be compiled down to architecture-specific SASS. Maybe that should be my next project.
+
+---
+
+# The Payoff: A Visual Performance Comparison
+
+After all that work, the big question is: was it worth it? Performance was never a requirement for me personally when I ventured into doing this. On par performance to the CUDA version and I would have been fine. But somewhere along the line all the tiny optimizations that I unknowingly made, made it a little bit faster than the CUDA version. So a win on that front as well, I guess.
+
+The results speak for themselves. Below is a visual breakdown of the performance difference I saw on my machine.
+
+<div className="w-full max-w-2xl mx-auto my-8 p-6 bg-gray-800 rounded-xl shadow-2xl border border-gray-700">
+  <div className="flex justify-around items-end space-x-4">
+    {/* CUDA Bar */}
+    <div className="flex flex-col items-center">
+      <div className="text-white text-4xl font-extrabold tracking-tighter">1474<span className="text-lg font-medium ml-1">ms</span></div>
+      <div className="w-24 h-48 bg-blue-500 rounded-t-lg mt-2 border-b-4 border-blue-300"></div>
+      <div className="mt-3 text-center text-blue-300 font-semibold">CUDA C++</div>
+    </div>
+
+    {/* Speedup Text */}
+    <div className="text-center pb-12">
+      <div className="text-5xl font-bold text-green-400">1.1x</div>
+      <div className="text-xl font-semibold text-white">Faster</div>
+      <div className="text-gray-400 mt-1">Execution Time</div>
+    </div>
+
+    {/* PTX Bar */}
+    <div className="flex flex-col items-center">
+      <div className="text-white text-4xl font-extrabold tracking-tighter">1340<span className="text-lg font-medium ml-1">ms</span></div>
+      <div className="w-24 h-40 bg-green-500 rounded-t-lg mt-2 border-b-4 border-green-300"></div>
+      <div className="mt-3 text-center text-green-300 font-semibold">Hand-written PTX</div>
+    </div>
+  </div>
+  <div className="text-center text-gray-400 mt-6 text-sm">
+    Hand-optimizing the kernels in PTX yielded a tangible ~10% performance increase over the compiler-optimized CUDA C++ code.
+  </div>
+</div>
+
+## How to Test It Yourself
+
+If you want to replicate these results, full instructions on how to compile and run the program are available in the Github Repo.
+
+
+<div className="flex justify-start mt-8 pt-4 border-t border-gray-700">
+  <a href="/blog/llm-ptx-06" className="text-blue-400 hover:text-blue-300 font-semibold">
+    ← Previous: The Attention Kernel
+  </a>
+</div>

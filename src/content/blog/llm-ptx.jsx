@@ -2,9 +2,9 @@ import React, { useState } from "react";
 
 export const part1 = [
   {
-    cuda: `__global__ void residual_fwd_kernel(float *__restrict__ out,
-                                     const float *__restrict__ inp1,
-                                     const float *__restrict__ inp2, int N)`,
+    cuda: `__global__ void residual_fwd_kernel(float *out,
+                                     const float *inp1,
+                                     const float *inp2, int N)`,
     ptx: `.visible .entry residual_fwd_kernel(
 	.param .u64 out_param,
 	.param .u64 inp1_param,
@@ -12,7 +12,7 @@ export const part1 = [
 	.param .u32 N_param
 )`,
     explanation:
-      "This section declares the CUDA kernel `residual_fwd_kernel` and its parameters. In PTX, this translates to defining a visible entry point (`.visible .entry`) with corresponding parameters. The pointers (`out`, `inp1`, `inp2`) are passed as 64-bit unsigned integers (`.u64`), and the integer `N` is passed as a 32-bit unsigned integer (`.u32`). The `__restrict__` keyword is a hint to the compiler that the pointers do not alias.",
+      "This section declares the CUDA kernel `residual_fwd_kernel` and its parameters. In PTX, this translates to defining a visible entry point (`.visible .entry`) with corresponding parameters. The pointers (`out`, `inp1`, `inp2`) are passed as 64-bit unsigned integers (`.u64`), and the integer `N` is passed as a 32-bit unsigned integer (`.u32`).",
   },
   {
     cuda: `{`,
@@ -27,7 +27,7 @@ export const part1 = [
       "The start of the kernel body. In PTX, this is where we declare the virtual registers. Registers are typed and must be declared before use. For example, `.reg .pred` declares a predicate register, `.reg .b64` declares 64-bit registers for addresses, and `.reg .f32` declares 32-bit floating-point registers.",
   },
   {
-    cuda: `// (Implicit) Load parameters`,
+    cuda: `// Load parameters`,
     ptx: `	ld.param.u64 	%out_addr, [out_param];
 	ld.param.u64 	%inp1_addr, [inp1_param];
 	ld.param.u64 	%inp2_addr, [inp2_param];
@@ -42,7 +42,7 @@ export const part1 = [
 	mov.u32 	%tid_x, %tid.x;
 	mad.lo.s32 	%idx, %blockid_x, %blockdim_x, %tid_x;`,
     explanation:
-      "This calculates the unique global index `i` for each thread. It uses special registers like `%ctaid.x` (block ID) and `%tid.x` (thread ID), then performs a fused `mad.lo.s32` (Multiply-Add Low) instruction: `%idx = %blockid_x * %blockdim_x + %tid_x`.",
+      "This calculates the unique global index `i` for each thread. It uses special registers like `%ctaid.x` (block ID) and `%tid.x` (thread ID), then performs a fused `mad.lo.s32` (Multiply-Add Low) instruction: `%idx = %blockid_x * %blockdim_x + %tid_x`. This is a common pattern in CUDA to compute the global thread index. `NOTE`: registers like `%ctaid.x`, `%ntid.x`, and `%tid.x` are special registers that hold the block ID, block dim, and thread ID, respectively and we need to move it to local registers before using it in arithmetic operations.",
   },
   {
     cuda: `if (i >= N)
@@ -60,14 +60,14 @@ export const part1 = [
 	cvta.to.global.u64 	%inp2_glbl, %inp2_addr;
 	add.s64 	%inp2_i_addr, %inp2_glbl, %offset;`,
     explanation:
-      "PART 1: Address Calculation. Before loading, the memory addresses are computed. It multiplies the index `%idx` by 4 (for `float`) to get a byte `%offset`, then adds it to the base address of each input array.",
+      " `PART 1`: `cvta.to.global` converts the pointer to global address space. The `mul.wide.s32` instruction computes the byte offset for the index `%idx` (multiplied by 4, since each float is 4 bytes). The `add.s64` instruction adds this offset to the base address of each input array to get the addresses for `inp1[i]` and `inp2[i]`. This is a common pattern in CUDA to access array elements based on a computed index.",
   },
   {
     cuda: `// (cont'd)`,
     ptx: `	ld.global.nc.f32 	%inp1_i, [%inp1_i_addr];
 	ld.global.nc.f32 	%inp2_i, [%inp2_i_addr];`,
     explanation:
-      "PART 2: Loading Data. The `ld.global.nc.f32` instruction loads a 32-bit float from global memory into a register. The `.nc` suffix is a cache hint ('non-coherent').",
+      "PART 2: Loading Data. The `ld.global.nc.f32` instruction loads a 32-bit float from global memory into a register. The `.nc` suffix is a cache hint ('non-coherent', Don't ask me too much, I am new here).",
   },
   {
     cuda: `// (cont'd)`,
@@ -95,13 +95,11 @@ export const part1 = [
 export const part2 = [
   {
     cuda: `#define GELU_SCALING_FACTOR sqrtf(2.0f / M_PI)`,
-    ptx: `/* Constant folded by the compiler.
-       The value √(2/π) ≃ 0.7978846f appears later as the
+    ptx: `// The value √(2/π) ≃ 0.7978846f appears later as the
        32-bit hex literal 0F3f4c4229 in:
            mul.f32 %tmp4, 0F3f4c4229, %tmp3;`,
     explanation:
-      "The macro is resolved at compile-time, so no separate PTX directive is emitted. \
-       Instead, the numeric value √(2/π) is baked directly into an instruction as the \
+      "The macro is resolved at compile-time in the case of CUDA. So for PTX, we baked the numeric value √(2/π) directly into an instruction as the \
        immediate constant `0F3f4c4229` (IEEE-754 encoding of 0.7978846 f).",
   },
   {
@@ -177,8 +175,7 @@ export const part2 = [
     ptx: `  add.f32 %tmp3, %cube, %inp_i;           // x + cube`,
     explanation:
       "The intermediate sum `(x + cube)` is formed and stored in `%tmp3`. \
-       Newer compilers often fuse the last multiply and this add into an \
-       `fma.rn.f32`, but the semantic result is the same.",
+       At this point I wasn't aware of the `fma` instruction (fused multiply-add, similar to mad, but for floats). Otherwise, we could have used it.",
   },
   {
     cuda: `  out[i] = 0.5f * x * (1.0f + tanhf(GELU_SCALING_FACTOR * (x + cube)));`,
@@ -257,11 +254,6 @@ export const part3 = [
       "`%ctaid.x` (block ID along X) is copied to `%r_t`, giving the time-step index `t`.",
   },
   {
-    cuda: `  // Each thread now handles 4 float elements, so our grid of threads is smaller`,
-    ptx: ``,
-    explanation: "This is a comment only; no PTX code is emitted.",
-  },
-  {
     cuda: `  int c_vec = threadIdx.x;`,
     ptx: `mov.u32 %r_cvec, %tid.x;`,
     explanation:
@@ -272,11 +264,6 @@ export const part3 = [
   /* ─────────────────────────────────────────────
      Vector-lane offset
      ─────────────────────────────────────────── */
-  {
-    cuda: `  // The starting index for the 4 floats this thread will handle`,
-    ptx: ``,
-    explanation: "Comment only; no PTX generated.",
-  },
   {
     cuda: `  int c_start = c_vec * 4;`,
     ptx: `shl.b32 %r_c_start_elems, %r_cvec, 2;`,
@@ -289,18 +276,12 @@ export const part3 = [
      Boundary check
      ─────────────────────────────────────────── */
   {
-    cuda: `  // Boundary check`,
-    ptx: ``,
-    explanation:
-      "Comment only.  The actual guard test appears on the next PTX line.",
-  },
-  {
     cuda: `  if (b < B && t < T && c_start < C) {`,
     ptx: `setp.lt.u32 %p_guard, %r_c_start_elems, %r_C;
 @!%p_guard bra EXIT;`,
     explanation:
       "The compiler relies on the launch configuration to guarantee `b < B` and \
-       `t < T`, so only `c_start < C` is emitted. `setp.lt.u32` sets `%p_guard` if \
+       `t < T`, so only `c_start < C` is really needed. `setp.lt.u32` sets `%p_guard` if \
        the condition is **true**.  The NOT predicate (`@!%p_guard`) branches to \
        `EXIT` when the condition fails, mimicking the high-level `if`.",
   },
@@ -308,11 +289,6 @@ export const part3 = [
   /* ─────────────────────────────────────────────
      Token id lookup
      ─────────────────────────────────────────── */
-  {
-    cuda: `    // Get the token index for this position`,
-    ptx: ``,
-    explanation: "Comment; no PTX.",
-  },
   {
     cuda: `    int ix = inp[b * T + t];`,
     ptx: `mad.lo.u32   %r_flat_idx, %r_b, %r_T, %r_t;        // b*T + t
@@ -327,11 +303,6 @@ ld.global.u32 %r_token_id, [%rd_addr];              // ix = inp[...]`,
   /* ─────────────────────────────────────────────
      Row base pointers
      ─────────────────────────────────────────── */
-  {
-    cuda: `    // Get base pointers to the correct rows in the embedding tables`,
-    ptx: ``,
-    explanation: "Comment only.",
-  },
   {
     cuda: `    const float *wte_row = wte + ix * C;`,
     ptx: `mad.lo.u32   %r_wte_offset_elems, %r_token_id, %r_C, %r_c_start_elems;`,
@@ -357,17 +328,10 @@ ld.global.u32 %r_token_id, [%rd_addr];              // ix = inp[...]`,
      Vector pointer casts (compile-time only)
      ─────────────────────────────────────────── */
   {
-    cuda: `    // Cast pointers to float4 pointers to load 128 bits at once`,
-    ptx: ``,
-    explanation:
-      "Pointer casts are purely semantic at compile time; the PTX uses vector load \
-       instructions instead of explicit casts.",
-  },
-  {
     cuda: `    const float4 *wte_ptr = reinterpret_cast<const float4 *>(wte_row + c_start);`,
     ptx: ``,
     explanation:
-      "No direct PTX is emitted; the address computed earlier (`%r_wte_offset_elems`) \
+      "No direct PTX is needed; the address computed earlier (`%r_wte_offset_elems`) \
        will be fed to a vector load.",
   },
   {
@@ -384,11 +348,6 @@ ld.global.u32 %r_token_id, [%rd_addr];              // ix = inp[...]`,
   /* ─────────────────────────────────────────────
      Vector loads
      ─────────────────────────────────────────── */
-  {
-    cuda: `    // Load the vectorized data`,
-    ptx: ``,
-    explanation: "Comment line.",
-  },
   {
     cuda: `    float4 wte_val = *wte_ptr;`,
     ptx: `mad.wide.u32 %rd_addr, %r_wte_offset_elems, 4, %ptr_wte;
@@ -410,11 +369,6 @@ ld.global.nc.v4.f32 {%f_wpe0,%f_wpe1,%f_wpe2,%f_wpe3}, [%rd_addr];`,
   /* ─────────────────────────────────────────────
      Elementwise addition
      ─────────────────────────────────────────── */
-  {
-    cuda: `    // Perform the additions component-wise`,
-    ptx: ``,
-    explanation: "Comment.",
-  },
   {
     cuda: `    float4 out_val;`,
     ptx: ``,
@@ -446,11 +400,6 @@ ld.global.nc.v4.f32 {%f_wpe0,%f_wpe1,%f_wpe2,%f_wpe3}, [%rd_addr];`,
   /* ─────────────────────────────────────────────
      Vector store
      ─────────────────────────────────────────── */
-  {
-    cuda: `    // Write the vectorized result back to global memory`,
-    ptx: ``,
-    explanation: "Comment.",
-  },
   {
     cuda: `    *out_ptr = out_val;`,
     ptx: `mad.wide.u32 %rd_addr, %r_out_offset_elems, 4, %ptr_out;
@@ -503,8 +452,8 @@ export const part4 = [
 .shared .align 4 .b8 %shared_sum2_arr[128];`,
     explanation:
       "The opening brace begins the body.  Two statically-sized shared arrays are \
-       allocated for the running sums of *x* and *x²*.  The compiler chose fixed 128-byte \
-       buffers instead of a single `extern` array.",
+       allocated for the running sums of *x* and *x²*. 128 bytes is enough for 32 floats (32 * 4 = 128).  The `.align 4` directive ensures 4-byte alignment. \
+    ",
   },
 
   /* ─────────────────────────────────────────────
@@ -514,7 +463,7 @@ export const part4 = [
     cuda: `  extern __shared__ float shared_buffer[];`,
     ptx: `// handled by the two .shared declarations above`,
     explanation:
-      "`extern __shared__` requests dynamic shared memory, but the compiler replaced \
+      "`extern __shared__` requests dynamic shared memory, but we replaced \
        it with two static 128-byte buffers (`%shared_sum_arr`, `%shared_sum2_arr`).",
   },
 
@@ -562,11 +511,6 @@ mad.wide.s32 %x_ptr, %idx, %C4, %inp_ptr;  // x = inp + bt*C`,
      5. Parallel-mean pre-loop initialisers
      ─────────────────────────────────────────── */
   {
-    cuda: `  // --- Parallel Mean Calculation ---`,
-    ptx: ``,
-    explanation: "Comment – no PTX emitted.",
-  },
-  {
     cuda: `  float sum = 0.0f;`,
     ptx: `mov.f32 %thread_sum, 0f00000000;`,
     explanation: "Initialises the per-thread running sum register to +0.0.",
@@ -602,14 +546,14 @@ setp.lt.s32 %cond, %i, %C;
      ─────────────────────────────────────────── */
   {
     cuda: `  shared_buffer[tid] = sum;`,
-    ptx: `// compiler stores only warp-leader results:
+    ptx: `// stores only warp-leader results:
 setp.eq.s32 %cond, %lane_id, 0;
 @!%cond bra $after_shared_write;
 mad.lo.s32 %shared_sum_ptr, %warp_id, 4, %shared_sum;
 st.shared.f32 [%shared_sum_ptr], %thread_sum;
 $after_shared_write:`,
     explanation:
-      "Rather than every thread writing, the compiler performs an intra-warp reduction \
+      "Rather than every thread writing, the we perform an intra-warp reduction \
        (using `shfl.sync.down`) and only the lane-0 thread of each warp writes the \
        partial sum to shared memory.",
   },
@@ -624,17 +568,12 @@ $after_shared_write:`,
      7. Shared-memory reduction (mean)
      ─────────────────────────────────────────── */
   {
-    cuda: `  // Reduction in shared memory`,
-    ptx: ``,
-    explanation: "Comment.",
-  },
-  {
     cuda: `  for (int stride = block_size / 2; stride > 0; stride >>= 1) {`,
     ptx: `// implemented in two levels:
   // 1) intra-warp shuffle (already done)
   // 2) warp-leaders read & reduce again (below)`,
     explanation:
-      "The high-level shared-memory reduction is compiled into a second warp-level \
+      "The high-level shared-memory reduction is translated into a second warp-level \
        `shfl.sync.down` reduction across the warp-leader values that were written to \
        shared memory.",
   },
@@ -642,7 +581,7 @@ $after_shared_write:`,
     cuda: `    if (tid < stride) {`,
     ptx: ``,
     explanation:
-      "Predicate tests inside the CUDA loop disappear because the compiler’s \
+      "Predicate tests inside the CUDA loop disappear because the  \
        two-stage reduction uses warps and shuffles instead of an explicit `if`.",
   },
   {
@@ -658,7 +597,7 @@ $after_shared_write:`,
   },
   {
     cuda: `    __syncthreads();`,
-    ptx: `// Not needed; compiler uses warp-level ops, then one barrier later.`,
+    ptx: `// Not needed; we use warp-level ops, then one barrier later.`,
     explanation:
       "The compiler rewrites the reduction to avoid a barrier inside the loop.",
   },
@@ -686,11 +625,6 @@ div.rn.f32     %m, %block_sumf32, %Cf32;`,
   /* ─────────────────────────────────────────────
      8. Parallel variance calculation
      ─────────────────────────────────────────── */
-  {
-    cuda: `  // --- Parallel Variance Calculation ---`,
-    ptx: ``,
-    explanation: "Comment.",
-  },
   {
     cuda: `  sum = 0.0f;`,
     ptx: `mov.f32 %thread_sum2, 0f00000000;`,
@@ -744,20 +678,15 @@ $after_shared_write2:`,
     explanation: "Barrier before the second reduction stage.",
   },
   {
-    cuda: `  // Reduction in shared memory`,
-    ptx: ``,
-    explanation: "Comment.",
-  },
-  {
     cuda: `  for (int stride = block_size / 2; stride > 0; stride >>= 1) {`,
-    ptx: `// compiled into a second warp-shuffle reduction (see PTX around $warp_reduce_loop2)`,
+    ptx: `// translated into a second warp-shuffle reduction (see PTX around $warp_reduce_loop2)`,
     explanation:
       "As with the mean, the loop is lowered to warp-level shuffles + one barrier.",
   },
   {
     cuda: `    if (tid < stride) {`,
     ptx: ``,
-    explanation: "Condition removed in compiler-generated pattern.",
+    explanation: "Removed. Similar to the mean reduction",
   },
   {
     cuda: `      shared_buffer[tid] += shared_buffer[tid + stride];`,
@@ -802,11 +731,6 @@ rsqrt.approx.f32 %s,  %var;`,
   /* ─────────────────────────────────────────────
      10. Final normalisation & affine transform
      ─────────────────────────────────────────── */
-  {
-    cuda: `  // --- Final Application ---`,
-    ptx: ``,
-    explanation: "Comment.",
-  },
   {
     cuda: `  for (int i = tid; i < C; i += block_size) {`,
     ptx: `mov.s32 %i, %tidx;
@@ -855,1320 +779,893 @@ setp.lt.s32 %cond, %i, %C;
 
 export const part5 = [
   /* ────────────────────────────────────
-     warp-level reductions
-     ─────────────────────────────────── */
-  {
-    cuda: `// warp‐level reductions`,
-    ptx: `/* comment – no PTX */`,
-    explanation: "Source comment only.",
-  },
-
+   // warp-level reductions
+   // ─────────────────────────────────── */
   {
     cuda: `__inline__ __device__ float warpReduceMax(float val) {`,
-    ptx: `/* device function fully inlined; PTX appears inside caller */`,
+    ptx: `/* (no direct equivalent) */`,
     explanation:
-      "Device function declaration; compiler inlines it, so no standalone PTX entry.",
+      "This is a device function declaration. Because it is `__inline__`, we will insert its code directly into any function that calls it.",
   },
   {
     cuda: `  for (int offset = warpSize / 2; offset > 0; offset /= 2)`,
-    ptx: `// see repeated shfl.sync.down & max.f32 inside softmax kernel`,
+    ptx: `mov.u32 %offset, 16;\n$warp_reduce_max:\n  /* ... body ... */\n  shr.u32 %offset, %offset, 1;\n  setp.gt.u32 %guard, %offset, 0;\n  @%guard bra $warp_reduce_max;`,
     explanation:
-      "Loop header; realised by a sequence of `shfl.sync.down` + `max.f32` instructions.",
+      "The start of a loop. In PTX, this is implemented by initializing an `%offset` register to 16 (`warpSize/2`), executing the loop body, and then using a conditional branch (`bra`) to repeat. This loop is fully unrolled.",
   },
   {
     cuda: `    val = max(val, __shfl_down_sync(0xffffffff, val, offset));`,
-    ptx: `max.f32 & shfl.sync.down.b32`,
+    ptx: `shfl.sync.down.b32 %r_shuffled_bits, %local_max, %offset, 0x1f, 0xffffffff;\nmax.f32 %local_max, %local_max, %r_shuffled_bits;`,
     explanation:
-      "One iteration of the reduction: shuffle then take the maximum.",
+      "`__shfl_down_sync` retrieves a value from another thread in the warp, `offset` lanes down. This directly maps to the `shfl.sync.down.b32` instruction. The result is then compared with the thread's current value using `max.f32`.",
   },
   {
     cuda: `  return val;`,
-    ptx: `// value left in the same register`,
+    ptx: `/* (no direct equivalent) */`,
     explanation:
-      "Return of inlined function – register already holds the result.",
+      "Since the function is inlined, there is no explicit `ret` instruction here. The final reduced value is simply left in the `%local_max` register for the subsequent instructions to use.",
   },
-  { cuda: `}`, ptx: ``, explanation: "Close brace." },
-
   {
-    cuda: ``,
+    cuda: `}`,
     ptx: ``,
-    explanation: "Blank line intentionally omitted from PTX.",
+    explanation: "End of the `warpReduceMax` device function.",
   },
-
   {
     cuda: `__inline__ __device__ float warpReduceSum(float val) {`,
-    ptx: `/* inlined; implemented with shfl.sync.down + add.f32 */`,
-    explanation: "Declaration of second device helper; likewise fully inlined.",
+    ptx: `/* (no direct equivalent) */`,
+    explanation:
+      "Declaration for the `warpReduceSum` device function. This is also inlined into the main kernel code.",
   },
   {
     cuda: `  for (int offset = warpSize / 2; offset > 0; offset /= 2)`,
-    ptx: `// shfl.sync.down & add.f32 pattern`,
-    explanation: "Loop header compiled to shuffle-addition ladder.",
+    ptx: `mov.u32 %offset, 16;\n$warp_reduce_sum:\n  /* ... body ... */\n  shr.u32 %offset, %offset, 1;\n  setp.gt.u32 %guard, %offset, 0;\n  @%guard bra $warp_reduce_sum;`,
+    explanation:
+      "The loop structure for the sum reduction, identical to the max reduction. It is also unrolled.",
   },
   {
     cuda: `    val += __shfl_down_sync(0xffffffff, val, offset);`,
-    ptx: `add.f32 & shfl.sync.down.b32`,
-    explanation: "Per-offset accumulation using shuffle + add.",
+    ptx: `shfl.sync.down.b32 %r_shuffled_bits, %local_sum, %offset, 0x1f, 0xffffffff;\nadd.f32 %local_sum, %local_sum, %r_shuffled_bits;`,
+    explanation:
+      "A value is shuffled down from a neighboring thread, and then `add.f32` is used to add it to the current thread's running sum, stored in `%local_sum`.",
   },
   {
     cuda: `  return val;`,
-    ptx: ``,
-    explanation: "Return – value already in register.",
+    ptx: `/* (no direct equivalent) */`,
+    explanation:
+      "Return of the inlined function. The final sum is held in the `%local_sum` register.",
   },
-  { cuda: `}`, ptx: ``, explanation: "Close brace." },
+  {
+    cuda: `}`,
+    ptx: ``,
+    explanation: "End of the `warpReduceSum` device function.",
+  },
 
   /* ────────────────────────────────────
-     block-wide reductions: max
-     ─────────────────────────────────── */
-  { cuda: ``, ptx: ``, explanation: "Blank line." },
-
-  {
-    cuda: `// block‐wide reductions (assumes blockDim.x ≤ 1024)`,
-    ptx: ``,
-    explanation: "Comment line.",
-  },
-
+   // block-wide reductions
+   // ─────────────────────────────────── */
   {
     cuda: `__inline__ __device__ float blockReduceMax(float val) {`,
-    ptx: `/* inlined; shared memory + warp shuffles visible in PTX */`,
-    explanation: "Start of blockReduceMax, inlined into kernel.",
+    ptx: `/* (no direct equivalent) */`,
+    explanation:
+      "Start of the `blockReduceMax` inlined device function. Its logic will appear directly within the `softmax_fwd_kernel`.",
   },
   {
     cuda: `  static __shared__ float shared[32];`,
     ptx: `.shared .align 4 .f32 shared_max[32];`,
     explanation:
-      "Shared array allocation materialises as a static 32-float buffer.",
+      "Declaration of a shared memory array. The PTX `.shared` directive allocates 32 floats (128 bytes) in the shared memory space, named `shared_max`.",
   },
   {
     cuda: `  int lane = threadIdx.x % warpSize;`,
     ptx: `rem.u32 %lane, %threadid, 32;`,
-    explanation: "Compute lane id inside warp.",
+    explanation:
+      "The thread's lane index within its warp is calculated using the remainder (`rem.u32`) of the thread ID divided by the warp size (32).",
   },
   {
     cuda: `  int wid = threadIdx.x / warpSize;`,
     ptx: `div.u32 %warp_id, %threadid, 32;`,
-    explanation: "Compute warp id within block.",
+    explanation:
+      "The warp's index within the thread block is calculated using integer division (`div.u32`).",
   },
-
   {
     cuda: `  val = warpReduceMax(val); // Each warp finds its max`,
-    ptx: `// the first shuffle-max ladder inside PTX`,
-    explanation: "Calls the inlined warp reduction sequence.",
+    ptx: `/* First warp_reduce_max ladder */\nmov.u32 %offset, 16;\n$warp_reduce_max:\n  shfl.sync.down.b32 ...\n  max.f32 ...\n  @%guard bra $warp_reduce_max;`,
+    explanation:
+      "This calls the inlined `warpReduceMax` function. In the PTX, this corresponds to the first unrolled loop of `shfl` and `max` instructions.",
   },
-
   {
     cuda: `  if (lane == 0) {`,
     ptx: `setp.eq.u32 %guard, %lane, 0;`,
-    explanation: "Predicate for lane-0 of each warp.",
+    explanation:
+      "A predicate register `%guard` is set to true only for threads where the lane index is 0 (the 'leader' of each warp).",
   },
   {
     cuda: `    shared[wid] = val; // Warp leaders write their max to shared memory`,
-    ptx: `st.shared.f32 [...]`,
-    explanation: "Lane-0 stores per-warp result to shared memory.",
+    ptx: `mov.u64 %shared_max_ptr, shared_max;\nmad.wide.u32 %shared_max_ptr, %warp_id, 4, %shared_max_ptr;\n@%guard st.shared.f32 [%shared_max_ptr], %local_max;`,
+    explanation:
+      "The warp leader (where `@%guard` is true) writes its warp's maximum value to the shared memory array. The address `shared[wid]` is calculated with a `mad.wide.u32` (fused multiply-add).",
   },
-  { cuda: `  }`, ptx: ``, explanation: "Close if." },
+  { cuda: `  }`, ptx: ``, explanation: "End of the if-statement block." },
   {
     cuda: `  __syncthreads();`,
     ptx: `bar.sync 0;`,
-    explanation: "Full-block barrier after first write.",
-  },
-
-  {
-    cuda: `  // The first warp reduces the partial results from the warp leaders`,
-    ptx: ``,
-    explanation: "Comment.",
+    explanation:
+      "A barrier synchronization. All threads in the block must reach this point before any thread can proceed. This ensures all warp leaders have written to shared memory.",
   },
   {
     cuda: `  val = (wid == 0) ? shared[lane] : -CUDART_INF_F;`,
-    ptx: `setp.eq.u32 %guard, %warp_id, 0; ...`,
+    ptx: `setp.eq.u32 %guard, %warp_id, 0;\nmov.f32 %local_max, 0FFF800000;\n@%guard ld.shared.f32 %local_max, [%shared_max_ptr];`,
     explanation:
-      "Only warp-0 threads read shared and others load -inf; realised with predicates and loads.",
+      "This ternary operation is split into multiple instructions. First, `%local_max` is reset to -infinity for all threads. Then, only the threads in the first warp (`wid == 0`) load the partial results from the shared memory array into their `%local_max` register.",
   },
   {
     cuda: `  val = warpReduceMax(val);`,
-    ptx: `// second shuffle-max ladder`,
+    ptx: `/* Second warp_reduce_max ladder */\nmov.u32 %offset, 16;\n$warp_reduce_max2:\n ...`,
     explanation:
-      "Second warp-level reduction to combine the 32 partial maxima.",
+      "A second warp reduction is performed. This time, only the first warp is active, reducing the 32 partial maximums to a single block-wide maximum.",
   },
 
   {
-    cuda: `  // --- THE CORRECT BROADCAST ---`,
-    ptx: ``,
-    explanation: "Comment.",
-  },
-  {
     cuda: `  // Only thread 0, which has the final answer, writes it to shared memory`,
     ptx: `setp.eq.u32 %guard, %threadid, 0;`,
-    explanation: "Predicate for thread 0.",
+    explanation:
+      "A predicate is set, this time for the single thread with `threadIdx.x == 0`.",
   },
   {
     cuda: `  if (threadIdx.x == 0) {`,
-    ptx: `@%guard st.shared.f32 [shared_max], %local_max;`,
-    explanation: "Thread-0 stores the final max to shared[0].",
+    ptx: `@%guard st.shared.f32 [%shared_max_ptr], %local_max;`,
+    explanation:
+      "Thread 0, which now holds the final block-wide maximum in its `%local_max` register, writes this value to the first element of the shared memory array.",
   },
   {
     cuda: `    shared[0] = val;`,
-    ptx: ``,
-    explanation: "Same store captured above.",
+    ptx: `/* (Combined with the if statement above) */`,
+    explanation:
+      "The body of the if-statement; the PTX instruction `st.shared.f32` performs this store.",
   },
-  { cuda: `  }`, ptx: ``, explanation: "Close if." },
   {
     cuda: `  // All threads wait for that write to complete`,
     ptx: `bar.sync 0;`,
-    explanation: "Barrier for broadcast.",
+    explanation:
+      "A second barrier synchronization. This ensures that thread 0's write to `shared[0]` is complete before any other thread tries to read it.",
   },
   {
     cuda: `  // All threads now read the same, correct final value`,
     ptx: `ld.shared.f32 %local_max, [shared_max];`,
-    explanation: "Load of the agreed-upon max.",
+    explanation:
+      "All threads in the block load the final maximum value from `shared_max[0]` into their local `%local_max` register, effectively broadcasting the result.",
   },
   {
     cuda: `  return shared[0];`,
-    ptx: `// value now in register`,
-    explanation: "Return statement; value already loaded.",
+    ptx: `/* (no direct equivalent) */`,
+    explanation:
+      "The broadcast is complete. The return value is now in the `%local_max` register for every thread.",
   },
-  { cuda: `}`, ptx: ``, explanation: "Close brace of blockReduceMax." },
-
-  /* ────────────────────────────────────
-     block-wide reductions: sum (similar pattern)
-     ─────────────────────────────────── */
-  { cuda: ``, ptx: ``, explanation: "Blank line." },
-
+  { cuda: `}`, ptx: ``, explanation: "End of `blockReduceMax`." },
   {
     cuda: `__inline__ __device__ float blockReduceSum(float val) {`,
-    ptx: `/* inlined; uses shared_sum[] buffer */`,
-    explanation: "Start of blockReduceSum; pattern mirrors max version.",
-  },
-  {
-    cuda: `  static __shared__ float shared[32];`,
     ptx: `.shared .align 4 .f32 shared_sum[32];`,
-    explanation: "Shared buffer for partial sums.",
+    explanation:
+      "The start of the `blockReduceSum` function, which is also inlined. A separate shared memory array, `shared_sum`, is allocated for this reduction.",
   },
   {
-    cuda: `  int lane = threadIdx.x % warpSize;`,
-    ptx: `rem.u32 %lane, %threadid, 32;`,
-    explanation: "Compute lane id.",
+    cuda: `/* (The implementation mirrors blockReduceMax exactly, using warpReduceSum and 0.0f as the identity) */`,
+    ptx: `/* (The PTX implementation mirrors the block-reduce-max logic, but uses add.f32 instead of max.f32 and 0.0 instead of -inf) */`,
+    explanation:
+      "The structure of `blockReduceSum` is identical to `blockReduceMax`. It performs a warp-level sum, has warp leaders write to shared memory, synchronizes, has warp 0 sum the partial results, and then broadcasts the final sum. The PTX is analogous, replacing `max.f32` with `add.f32` and `-inf` with `0.0f`.",
   },
-  {
-    cuda: `  int wid = threadIdx.x / warpSize;`,
-    ptx: `div.u32 %warp_id, %threadid, 32;`,
-    explanation: "Compute warp id.",
-  },
-  {
-    cuda: `  val = warpReduceSum(val); // Each warp finds its sum`,
-    ptx: `// first shuffle-add ladder`,
-    explanation: "Inlined warp sum reduction.",
-  },
-  {
-    cuda: `  if (lane == 0) {`,
-    ptx: `setp.eq.u32 %guard, %lane, 0;`,
-    explanation: "Lane-0 predicate.",
-  },
-  {
-    cuda: `    shared[wid] = val; // Warp leaders write their sum to shared memory`,
-    ptx: `st.shared.f32 [...]`,
-    explanation: "Store per-warp sum.",
-  },
-  { cuda: `  }`, ptx: ``, explanation: "Close if." },
-  { cuda: `  __syncthreads();`, ptx: `bar.sync 0;`, explanation: "Barrier." },
-  {
-    cuda: `  val = (wid == 0) ? shared[lane] : 0.0f;`,
-    ptx: `setp.eq.u32 %guard, %warp_id, 0; ...`,
-    explanation: "Select shared value or zero depending on warp id.",
-  },
-  {
-    cuda: `  val = warpReduceSum(val);`,
-    ptx: `// second shuffle-add ladder`,
-    explanation: "Second reduction within first warp.",
-  },
-  {
-    cuda: `  // --- THE CORRECT BROADCAST ---`,
-    ptx: ``,
-    explanation: "Comment.",
-  },
-  {
-    cuda: `  if (threadIdx.x == 0) {`,
-    ptx: `setp.eq.u32 %guard, %threadid, 0;`,
-    explanation: "Thread-0 predicate.",
-  },
-  {
-    cuda: `    shared[0] = val;`,
-    ptx: `@%guard st.shared.f32 [shared_sum], %local_sum;`,
-    explanation: "Store final sum.",
-  },
-  { cuda: `  }`, ptx: ``, explanation: "Close if." },
-  { cuda: `  __syncthreads();`, ptx: `bar.sync 0;`, explanation: "Barrier." },
-  {
-    cuda: `  return shared[0];`,
-    ptx: `ld.shared.f32 %local_sum, [shared_sum];`,
-    explanation: "All threads load the final sum and function returns.",
-  },
-  { cuda: `}`, ptx: ``, explanation: "Close brace of blockReduceSum." },
 
   /* ────────────────────────────────────
-     softmax_fwd_kernel
-     ─────────────────────────────────── */
-  { cuda: ``, ptx: ``, explanation: "Blank line." },
-
+   // softmax_fwd_kernel
+   // ─────────────────────────────────── */
   {
-    cuda: `__global__ void`,
-    ptx: `// cont’d on next line`,
-    explanation: "Kernel keyword split across two lines; compiler joins.",
-  },
-  {
-    cuda: `softmax_fwd_kernel(float *__restrict__ probs,        // [B*T][Vp]`,
-    ptx: `.visible .entry softmax_fwd_kernel(`,
+    cuda: `__global__ void\nsoftmax_fwd_kernel(float *__restrict__ probs,`,
+    ptx: `.visible .entry softmax_fwd_kernel(\n\t.param .u64 probs_param,`,
     explanation:
-      "Kernel entry with pointer parameter `probs` becomes first `.u64` param.",
+      "The global kernel definition. The `probs` pointer argument becomes a 64-bit parameter (`.param .u64`) in PTX.",
   },
   {
-    cuda: `                   const float *__restrict__ logits, // [B*T][Vp]`,
-    ptx: `  .param .u64 logits_param,`,
-    explanation: "Second pointer param.",
+    cuda: `                     const float *__restrict__ logits,`,
+    ptx: `\t.param .u64 logits_param,`,
+    explanation:
+      "The `logits` pointer argument similarly becomes a 64-bit parameter.",
   },
   {
-    cuda: `                   int B, int T, int V, int Vp) {`,
-    ptx: `  .param .u32 B_param, .param .u32 T_param, .param .u32 V_param, .param .u32 Vp_param )`,
-    explanation: "Integer scalars become `.u32` params; opening brace.",
+    cuda: `                     int B, int T, int V, int Vp) {`,
+    ptx: `\t.param .u32 B_param, ... )`,
+    explanation:
+      "The integer scalar arguments `B, T, V, Vp` become 32-bit parameters.",
   },
-
   {
     cuda: `  int bt = blockIdx.x; // in [0..B*T)`,
     ptx: `mov.u32 %bt, %ctaid.x;`,
-    explanation: "Block-index fetch.",
+    explanation:
+      "The block index `blockIdx.x` is read from the special register `%ctaid.x` and moved into the register `%bt`.",
   },
   {
     cuda: `  int N = B * T;`,
     ptx: `mul.lo.u32 %N, %B, %T;`,
-    explanation: "Product of B and T.",
+    explanation:
+      "The total number of batches/sequences `N` is calculated by multiplying (`mul.lo.u32`) the B and T parameters.",
   },
   {
     cuda: `  if (bt >= N)`,
     ptx: `setp.ge.s32 %guard, %bt, %N;`,
-    explanation: "Guard predicate.",
+    explanation:
+      "A predicate `%guard` is set to true if the current block's index `bt` is greater than or equal to `N`.",
   },
   {
     cuda: `    return;`,
     ptx: `@%guard bra $exit;`,
-    explanation: "Early exit branch.",
+    explanation:
+      "If the guard predicate is true, the thread block is outside the problem bounds, so we branch (`bra`) directly to the exit label.",
   },
-
-  { cuda: ``, ptx: ``, explanation: "Blank line." },
-
   {
     cuda: `  const float *logits_bt = logits + bt * Vp;`,
-    ptx: `mad.wide.u32 %logits_bt, %bt_Vp, 4, %logits_ptr;`,
-    explanation: "Row pointer for logits.",
+    ptx: `mul.lo.u32 %bt_Vp, %bt, %Vp;\nmad.wide.u32 %logits_bt, %bt_Vp, 4, %logits_ptr;`,
+    explanation:
+      "Calculates the base address for the current row of logits. `bt` and `Vp` are multiplied, then that offset (times 4 bytes) is added to the base `logits_ptr`.",
   },
   {
     cuda: `  float *probs_bt = probs + bt * Vp;`,
-    ptx: `mad.wide.u32 %probs_bt,  %bt_Vp, 4, %probs_ptr;`,
-    explanation: "Row pointer for probs.",
+    ptx: `mad.wide.u32 %probs_bt, %bt_Vp, 4, %probs_ptr;`,
+    explanation:
+      "Calculates the base address for the current row of probabilities in the same way.",
   },
-
-  { cuda: ``, ptx: ``, explanation: "Blank." },
-
   {
     cuda: `  int tid = threadIdx.x;`,
     ptx: `mov.u32 %threadid, %tid.x;`,
-    explanation: "Thread ID.",
+    explanation:
+      "The thread's index within the block, `threadIdx.x`, is read from the special register `%tid.x`.",
   },
   {
     cuda: `  int threads = blockDim.x;`,
     ptx: `mov.u32 %threads, %ntid.x;`,
-    explanation: "Threads per block.",
-  },
-
-  /* 1) find max */
-  { cuda: ``, ptx: ``, explanation: "Blank." },
-  {
-    cuda: `  // 1) find max over real vocab [0..V)`,
-    ptx: `// find-max loop starts`,
-    explanation: "Comment.",
+    explanation:
+      "The total number of threads in the block, `blockDim.x`, is read from the special register `%ntid.x`.",
   },
   {
     cuda: `  float local_max = -CUDART_INF_F;`,
     ptx: `mov.f32 %local_max, 0FFF800000;`,
-    explanation: "Initialise to −inf.",
+    explanation:
+      "A register for the thread's local maximum is initialized to negative infinity (`-CUDART_INF_F`), represented by the hex value `0FFF800000`.",
   },
   {
     cuda: `  for (int i = tid; i < V; i += threads) {`,
-    ptx: `mov.u32 %idx, %threadid;`,
-    explanation: "Loop set-up.",
+    ptx: `mov.u32 %idx, %threadid;\n$find_max_loop:\n  /* ... body ... */\n  add.u32 %idx, %idx, %threads;\n  setp.lt.u32 %guard, %idx, %V;\n  @%guard bra $find_max_loop;`,
+    explanation:
+      "This is a grid-stride loop. Each thread starts at its own ID (`tid`) and processes elements `threads` apart. The PTX initializes an index, loops, increments the index, and branches based on the comparison with `V`.",
   },
   {
     cuda: `    local_max = fmaxf(local_max, logits_bt[i]);`,
-    ptx: `ld.global.f32 %logits_val, [...] ; max.f32 %local_max, %local_max, %logits_val;`,
-    explanation: "Load and update per-thread max.",
+    ptx: `mad.wide.u32 %logits_bt_i, %idx, 4, %logits_bt;\nld.global.f32 %logits_val, [%logits_bt_i];\nmax.f32 %local_max, %local_max, %logits_val;`,
+    explanation:
+      "Inside the loop, the address of `logits_bt[i]` is calculated, the value is loaded from global memory (`ld.global.f32`), and `max.f32` updates the thread's local maximum.",
   },
   {
     cuda: `  }`,
-    ptx: `add.u32 %idx, %idx, %threads; ...`,
-    explanation: "Loop increment/test compiled with branch back.",
+    ptx: `/* (end of loop structure) */`,
+    explanation: "End of the for-loop block.",
   },
   {
     cuda: `  float maxval = blockReduceMax(local_max);`,
-    ptx: `// block-wide max reduction sequence using shared_max`,
+    ptx: `/* (The entire inlined blockReduceMax PTX sequence) */`,
     explanation:
-      "`blockReduceMax` inlined – first shared buffer reduction produces `%local_max` result broadcast to all.",
+      "The `blockReduceMax` function is inlined here. This corresponds to the entire sequence of warp shuffles, shared memory writes/reads, and barriers needed to find the block-wide maximum.",
   },
   {
     cuda: `  __syncthreads();`,
     ptx: `bar.sync 0;`,
-    explanation: "Barrier to ensure `shared_max` is visible.",
-  },
-
-  /* 2) exp + sum */
-  { cuda: ``, ptx: ``, explanation: "Blank." },
-  {
-    cuda: `  // 2) compute exp(logit - maxval) and partial sum`,
-    ptx: `// loop generating %local_sum`,
-    explanation: "Comment.",
+    explanation:
+      "A synchronization barrier. The PTX shows this `bar.sync` as part of the inlined reduction's broadcast, ensuring every thread has the correct `maxval` before proceeding.",
   },
   {
     cuda: `  float local_sum = 0.0f;`,
     ptx: `mov.f32 %local_sum, 0F00000000;`,
-    explanation: "Initialise per-thread accumulator.",
+    explanation:
+      "A register for the thread's local sum is initialized to 0.0, represented by the hex value `0F00000000`.",
   },
   {
     cuda: `  for (int i = tid; i < V; i += threads) {`,
-    ptx: `mov.u32 %idx, %threadid;`,
-    explanation: "Loop set-up for exp.",
+    ptx: `$compute_exp_loop:\n ...`,
+    explanation: "Another grid-stride loop to iterate over the vocabulary.",
   },
   {
     cuda: `    float e = expf(logits_bt[i] - maxval);`,
-    ptx: `sub.f32 ... ; ex2.approx.ftz.f32`,
-    explanation: "Subtract max, scale, and exponentiate using fast exp2.",
+    ptx: `ld.global.f32 %logits_val, [...];\nsub.f32 %logits_val, %logits_val, %local_max;\nmul.f32 %logits_val, %logits_val, 0f3fb8aa3b;\nex2.approx.ftz.f32 %logits_val, %logits_val;`,
+    explanation:
+      "This computes `exp(x)`. It first subtracts the max value (`sub.f32`), then calculates `exp(x)` by converting it to `exp2(x * log2(e))`. The `mul.f32` instruction multiplies by `log2(e)`, and `ex2.approx.ftz.f32` computes the fast, approximate base-2 exponent.",
   },
   {
     cuda: `    probs_bt[i] = e;`,
-    ptx: `st.global.f32 [...]`,
-    explanation: "Write provisional probability.",
+    ptx: `mad.wide.u32 %probs_bt_i, %idx, 4, %probs_bt;\nst.global.f32 [%probs_bt_i], %logits_val;`,
+    explanation:
+      "The calculated exponential value `e` (which is now in `%logits_val`) is stored into the `probs` array in global memory.",
   },
   {
     cuda: `    local_sum += e;`,
     ptx: `add.f32 %local_sum, %local_sum, %logits_val;`,
-    explanation: "Accumulate sum.",
+    explanation: "The value `e` is added to the thread's local running sum.",
   },
   {
     cuda: `  }`,
-    ptx: `add.u32 %idx, %idx, %threads; ...`,
-    explanation: "Loop increment/test.",
+    ptx: ``,
+    explanation: "End of the for-loop block.",
   },
   {
     cuda: `  float sum = blockReduceSum(local_sum);`,
-    ptx: `// block-wide sum reduction using shared_sum`,
-    explanation: "Inline `blockReduceSum` – shared buffer + shuffles.",
+    ptx: `/* (The entire inlined blockReduceSum PTX sequence) */`,
+    explanation:
+      "The `blockReduceSum` function is inlined. This corresponds to the PTX sequence for summing values across the block using warp shuffles and shared memory.",
   },
   {
     cuda: `  __syncthreads();`,
     ptx: `bar.sync 0;`,
-    explanation: "Barrier after sum reduction.",
+    explanation:
+      "Another synchronization, part of the inlined sum reduction, to broadcast the final sum to all threads.",
   },
-
-  { cuda: ``, ptx: ``, explanation: "Blank." },
   {
     cuda: `  float inv_sum = (sum > 0.0f ? 1.0f / sum : 0.0f);`,
-    ptx: `setp.gt.f32 %guard, %local_sum, 0F00000000; ... rcp.approx.f32`,
-    explanation: "Reciprocal guarded by predicate; zero if sum≤0.",
-  },
-
-  /* 3) normalise */
-  { cuda: ``, ptx: ``, explanation: "Blank." },
-  {
-    cuda: `  // 3) normalize the real-vocab probabilities`,
-    ptx: `// normalisation loop`,
-    explanation: "Comment.",
+    ptx: `setp.gt.f32 %guard, %local_sum, 0F00000000;\nmov.f32 %inv_sum, 0F00000000;\n@%guard rcp.approx.f32 %inv_sum, %local_sum;`,
+    explanation:
+      "This computes the inverse of the sum, with a check for `sum > 0`. A predicate is set, `%inv_sum` is initialized to 0.0, and then conditionally overwritten with the result of the reciprocal instruction `rcp.approx.f32` if the sum was positive.",
   },
   {
     cuda: `  for (int i = tid; i < V; i += threads) {`,
-    ptx: `mov.u32 %idx, %threadid;`,
-    explanation: "Loop set-up.",
+    ptx: `$normalize_loop:\n ...`,
+    explanation: "A grid-stride loop to apply the normalization factor.",
   },
   {
     cuda: `    probs_bt[i] *= inv_sum;`,
-    ptx: `ld.global.f32 ... ; mul.f32 ; st.global.f32`,
-    explanation: "Multiply by `inv_sum` and store.",
+    ptx: `ld.global.f32 %logits_val, [%probs_bt_i];\nmul.f32 %logits_val, %logits_val, %inv_sum;\nst.global.f32 [%probs_bt_i], %logits_val;`,
+    explanation:
+      "This is a read-modify-write operation. The unnormalized probability is loaded, multiplied by the inverse sum, and then stored back to global memory.",
   },
-  {
-    cuda: `  }`,
-    ptx: `add.u32 %idx, %idx, %threads; ...`,
-    explanation: "Loop increment/test.",
-  },
+  { cuda: `  }`, ptx: ``, explanation: "End of the for-loop block." },
 
-  /* 4) zero padding */
-  {
-    cuda: `  // 4) zero out the padded entries [V..Vp)`,
-    ptx: `// zero-padding loop`,
-    explanation: "Comment.",
-  },
   {
     cuda: `  for (int i = V + tid; i < Vp; i += threads) {`,
-    ptx: `add.u32 %idx, %V, %threadid;`,
-    explanation: "Initial index for padding loop.",
+    ptx: `add.u32 %idx, %V, %threadid;\n$zero_padding_check:\n  setp.lt.u32 %guard, %idx, %Vp;\n  @%guard bra $zero_padding_loop;`,
+    explanation:
+      "This loop starts where the real vocabulary ends (`V`) and zeros out any padding. The initial index is calculated as `V + tid`.",
   },
   {
     cuda: `    probs_bt[i] = 0.0f;`,
-    ptx: `st.global.f32 [...] , 0F00000000;`,
-    explanation: "Store zero.",
+    ptx: `st.global.f32 [%probs_bt_i], 0F00000000;`,
+    explanation:
+      "A constant 0.0f is stored into the padding section of the `probs` array in global memory.",
   },
-  {
-    cuda: `  }`,
-    ptx: `add.u32 %idx, %idx, %threads; ...`,
-    explanation: "Loop increment/test.",
-  },
-
+  { cuda: `  }`, ptx: ``, explanation: "End of the for-loop block." },
   {
     cuda: `}`,
     ptx: `$exit:\n  ret;`,
-    explanation: "End of kernel – return instruction.",
+    explanation:
+      "The end of the kernel. The `$exit` label is the target for early exit, and `ret` returns control from the kernel.",
   },
 ];
 
 export const part6 = [
-  /* ──────────────────────────────────────────
-     Kernel signature & thread identifiers
-     ───────────────────────────────────────── */
+  /* ────────────────────────────────────
+   // Kernel Definition and Setup
+   // ─────────────────────────────────── */
   {
-    cuda: `__global__ void attention_fwd_kernel(float *out, float *preatt, float *att,`,
-    ptx: `.visible .entry attention_fwd_kernel(
-    .param .u64 out_param,
-    .param .u64 preattn_param,
-    .param .u64 attn_param,`,
+    cuda: `__global__ void attention_fwd_kernel(...) {`,
+    ptx: `.visible .entry attention_fwd_kernel(\n  .param .u64 out_param, ...\n) {`,
     explanation:
-      "First line of the kernel declaration.  Each pointer argument becomes a \
-       64-bit parameter in the PTX entry list.",
+      "The kernel's entry point. The `__global__` keyword in CUDA C++ corresponds to a `.visible .entry` function in PTX. Each argument passed to the kernel is explicitly declared as a `.param` with its corresponding type (`.u64` for pointers, `.u32` for integers).",
   },
   {
-    cuda: `                                     const float *inp, int B, int T, int C,`,
-    ptx: `    .param .u64 inp_param,
-    .param .u32 B_param,
-    .param .u32 T_param,
-    .param .u32 C_param,`,
+    cuda: `// C++ variable declarations`,
+    ptx: `.reg .pred %cond;\n.reg .b32 %B, %T, ...;\n.reg .b64 %att_bth_ptr, ...;\n.reg .f32 %q_val, ...;`,
     explanation:
-      "Continuation of the parameter list: `inp` is a fourth 64-bit pointer; \
-       the scalars `B, T, C` are 32-bit unsigned parameters.",
+      "In PTX, all registers used within a function must be declared at the beginning. This section corresponds to all the local variable declarations in C++ (e.g., `int h`, `float maxval`, etc.). Registers are typed, such as `.pred` for predicates, `.b32` for 32-bit integers, `.b64` for 64-bit addresses, and `.f32` for single-precision floats.",
   },
   {
-    cuda: `                                     int NH) {`,
-    ptx: `    .param .u32 NH_param
-)`,
+    cuda: `// Loading kernel parameters into registers`,
+    ptx: `ld.param.u64 %out_ptr, [out_param];\nld.param.u64 %preattn_ptr, [preattn_param];\nld.param.u64 %attn_ptr, [attn_param];\nld.param.u64 %inp_ptr, [inp_param];\nld.param.u32 %B, [B_param];\nld.param.u32 %T, [T_param];\nld.param.u32 %C, [C_param];\nld.param.u32 %NH, [NH_param];`,
     explanation:
-      "Final scalar parameter `NH` (number of heads).  The closing parenthesis ends \
-       the PTX entry header and the body begins next.",
-  },
-
-  /* comments about grid layout */
-  {
-    cuda: `  // Each thread block is for one head and one batch item: grid(NH, B)`,
-    ptx: ``,
-    explanation: "High-level comment only; no PTX emitted.",
+      "The first step inside the kernel is to move the parameters from the special parameter memory space into general-purpose registers. The `ld.param` (load parameter) instruction performs this for each argument.",
   },
   {
-    cuda: `  // Each thread is for one query token: block(T)`,
-    ptx: ``,
-    explanation: "Comment.",
+    cuda: `// Converting pointers to global address space`,
+    ptx: `cvta.to.global.u64 %out_ptr, %out_ptr;\ncvta.to.global.u64 %preattn_ptr, %preattn_ptr;\ncvta.to.global.u64 %attn_ptr, %attn_ptr;\ncvta.to.global.u64 %inp_ptr, %inp_ptr;`,
+    explanation:
+      "The `cvta.to.global.u64` (convert address) instruction translates the loaded pointer from a parameter-specific address to a generic global memory address that can be used by load and store instructions like `ld.global`.",
   },
-
-  /* thread indices */
   {
     cuda: `  int h = blockIdx.x;`,
     ptx: `mov.u32 %h, %ctaid.x;`,
-    explanation: "`blockIdx.x` → head index `%h`.",
+    explanation:
+      "The head index `h` is assigned by reading the block's X-dimension ID from the special register `%ctaid.x` and moving it into the `%h` register.",
   },
   {
     cuda: `  int b = blockIdx.y;`,
     ptx: `mov.u32 %b, %ctaid.y;`,
-    explanation: "`blockIdx.y` → batch index `%b`.",
+    explanation:
+      "The batch index `b` is assigned by reading the block's Y-dimension ID from the special register `%ctaid.y` into the `%b` register.",
   },
   {
     cuda: `  int t = threadIdx.x;`,
     ptx: `mov.u32 %t, %tid.x;`,
-    explanation: "`threadIdx.x` → query-token index `%t`.",
-  },
-
-  /* guard */
-  {
-    cuda: ``,
-    ptx: ``,
-    explanation: "Blank line in source (ignored).",
-  },
-  {
-    cuda: `  if (b >= B || h >= NH || t >= T)`,
-    ptx: `setp.ge.u32 %cond, %b,  %B;  @%cond bra $exit;
-setp.ge.u32 %cond, %h,  %NH; @%cond bra $exit;
-setp.ge.u32 %cond, %t,  %T;  @%cond bra $exit;`,
     explanation:
-      "Three comparisons compile to predicates that branch to `$exit` if any limit \
-       is exceeded.",
+      "The token index `t` (representing the current query token) is assigned by reading the thread's X-dimension ID from the special register `%tid.x` into the `%t` register.",
   },
   {
-    cuda: `    return;`,
-    ptx: `// branch handled above`,
+    cuda: `  if (b >= B || h >= NH || t >= T)\n    return;`,
+    ptx: `setp.ge.u32 %cond, %t, %T;\n@%cond bra $exit;\nsetp.ge.u32 %cond, %h, %NH;\n@%cond bra $exit;\nsetp.ge.u32 %cond, %b, %B;\n@%cond bra $exit;`,
     explanation:
-      "Early-return realised with the conditional branches already emitted.",
+      "These are guard clauses to prevent out-of-bounds execution. Each check uses `setp.ge.u32` (set predicate if greater or equal) to compare an index with its bound. If the condition is true, the `@%cond bra $exit` instruction performs a branch, immediately exiting the kernel for that thread.",
   },
-
-  /* constants & scale */
-  { cuda: ``, ptx: ``, explanation: "Blank line." },
   {
     cuda: `  int C3 = C * 3;`,
     ptx: `mul.lo.u32 %C3, %C, 3;`,
-    explanation: "`C3` (3×C) in register `%C3`.",
+    explanation:
+      "Calculates `C*3`, representing the combined size of a Query, Key, and Value vector, storing it in the `%C3` register.",
   },
   {
     cuda: `  int hs = C / NH; // head size`,
     ptx: `div.u32 %hs, %C, %NH;`,
-    explanation: "`hs` (head-size) via integer divide.",
+    explanation:
+      "Calculates the dimension of each attention head (`hs`) by dividing the total channels `%C` by the number of heads `%NH`.",
   },
   {
     cuda: `  float scale = 1.0f / sqrtf((float)hs);`,
-    ptx: `cvt.rn.f32.u32 %hs_f32, %hs;
-sqrt.rn.f32     %hs_sqrt, %hs_f32;
-rcp.rn.f32      %scale,   %hs_sqrt;`,
+    ptx: `cvt.rn.f32.u32 %hs_f32, %hs;\nsqrt.rn.f32 %hs_sqrt, %hs_f32;\nrcp.rn.f32 %scale, %hs_sqrt;`,
     explanation:
-      "Convert `hs` to float, take square-root, then reciprocal → `scale`.",
-  },
-
-  /* pointer arithmetic: base addresses */
-  { cuda: ``, ptx: ``, explanation: "Blank." },
-  {
-    cuda: `  // Pointer to the input for this batch item`,
-    ptx: ``,
-    explanation: "Comment.",
+      "Computes the attention scaling factor `1/sqrt(hs)`. This is implemented in three steps: 1) `cvt` converts the integer `%hs` to a float. 2) `sqrt.rn.f32` computes the square root. 3) `rcp.rn.f32` computes the reciprocal, which is a fast way to perform division.",
   },
   {
     cuda: `  const float *inp_b = inp + b * T * C3;`,
-    ptx: `mul.lo.u32 %bT, %b, %T;
-mul.lo.u32 %C3_x4, %C3, 4;
-mad.wide.u32 %inp_b_ptr, %bT, %C3_x4, %inp_ptr;`,
+    ptx: `mul.lo.u32 %C3_x4, %C3, 4;\nmul.lo.u32 %bT, %b, %T;\nmad.wide.u32 %inp_b_ptr, %bT, %C3_x4, %inp_ptr;`,
     explanation:
-      "Compute byte offset `(b*T*C3)*4` and add to `inp` base → `%inp_b_ptr`.",
-  },
-  {
-    cuda: `  // Pointer to the query vector for this thread (b, t, h)`,
-    ptx: ``,
-    explanation: "Comment.",
+      "Calculates the base pointer for the current batch. It multiplies `C3` by 4 to get a byte stride, computes the element offset `b*T`, and then uses `mad.wide.u32` to calculate the final address: `(b*T)*(C3*4) + inp_ptr`.",
   },
   {
     cuda: `  const float *query_t = inp_b + t * C3 + h * hs;`,
-    ptx: `mad.wide.u32 %query_t_ptr, %t, %C3_x4, %inp_b_ptr;
-mul.lo.u32  %hs_x4, %hs, 4;
-mad.wide.u32 %query_t_ptr, %h, %hs_x4, %query_t_ptr;`,
+    ptx: `mul.lo.u32 %hs_x4, %hs, 4;\nmad.wide.u32 %query_t_ptr, %t, %C3_x4, %inp_b_ptr;\nmad.wide.u32 %query_t_ptr, %h, %hs_x4, %query_t_ptr;`,
     explanation:
-      "Adds `(t*C3 + h*hs)` elements (each 4 bytes) to `%inp_b_ptr`, yielding \
-       the query vector pointer.",
-  },
-
-  /* output row pointers */
-  { cuda: ``, ptx: ``, explanation: "Blank." },
-  {
-    cuda: `  // Pointers to the output attention scores for this thread's row`,
-    ptx: ``,
-    explanation: "Comment.",
+      "Calculates the pointer to this thread's query vector. First, it adds the token offset (`t * C3 * 4`) to the batch pointer. Then, it adds the head offset (`h * hs * 4`) to that intermediate result.",
   },
   {
     cuda: `  float *preatt_bth = preatt + (b * NH * T * T) + (h * T * T) + (t * T);`,
-    ptx: `mul.lo.u32 %TT, %T, %T;
-mad.lo.u32  %b_NH_h, %b, %NH, %h;
-mul.lo.u32  %b_NH_TT, %b_NH_h, %TT;
-mad.lo.u32  %bth_offset, %t, %T, %b_NH_TT;
-mad.wide.u32 %preatt_bth_ptr, %bth_offset, 4, %preattn_ptr;`,
+    ptx: `mad.lo.u32 %b_NH_h, %b, %NH, %h;\nmul.lo.u32 %TT, %T, %T;\nmul.lo.u32 %b_NH_TT, %b_NH_h, %TT;\nmad.lo.u32 %bth_offset, %t, %T, %b_NH_TT;\nmad.wide.u32 %preatt_bth_ptr, %bth_offset, 4, %preattn_ptr;`,
     explanation:
-      "Computes a linear offset (batch × heads × T²  +  t·T) then converts to bytes \
-       and adds to `preatt` base.",
+      "Calculates the pointer to the start of the current thread's row in the `preatt` score matrix. The complex element offset is built up in stages for clarity and then converted to a byte offset (`* 4`) and added to the base pointer.",
   },
   {
     cuda: `  float *att_bth = att + (b * NH * T * T) + (h * T * T) + (t * T);`,
     ptx: `mad.wide.u32 %att_bth_ptr, %bth_offset, 4, %attn_ptr;`,
-    explanation: "Same offset reused for the `att` buffer.",
+    explanation:
+      "Calculates the pointer for the final `att` matrix row, reusing the `%bth_offset` calculated previously and adding it to the base `attn_ptr`.",
   },
 
-  /* ──────────────────────  PASS 1  ────────────────────── */
-  { cuda: ``, ptx: ``, explanation: "Blank." },
-  {
-    cuda: `  // --- Pass 1: Calculate Q.K^T and find maxval (causal attention) ---`,
-    ptx: ``,
-    explanation: "Comment.",
-  },
-  {
-    cuda: `  // Each thread finds its OWN maxval, no block reduction needed.`,
-    ptx: ``,
-    explanation: "Comment.",
-  },
+  /* ────────────────────────────────────
+   // Pass 1: Calculate Q.K^T and find maxval
+   // ─────────────────────────────────── */
   {
     cuda: `  float maxval = -10000.0f;`,
     ptx: `mov.f32 %maxval, 0fc61c4000;`,
-    explanation: "Initialise max tracker to −10000 f.",
-  },
-  {
-    cuda: `  for (int t2 = 0; t2 <= t; t2++) {`,
-    ptx: `mov.u32 %t2, 0;  // loop setup`,
-    explanation: "Outer loop over keys up to `t`.",
-  },
-  {
-    cuda: `    // Pointer to the key vector for position t2`,
-    ptx: ``,
-    explanation: "Comment.",
-  },
-  {
-    cuda: `    const float *key_t2 = inp_b + t2 * C3 + h * hs + C; // +C offset for key`,
-    ptx: `mad.lo.u32 %hhsC, %h, %hs, %C;          // h*hs + C
-mad.lo.u32 %offset, %t2, %C3, %hhsC;   // t2*C3 + ...
-mad.wide.u32 %key_t2_ptr, %offset, 4, %inp_b_ptr;`,
     explanation:
-      "Builds the byte pointer for key vector at timestep `t2` (offset by +C for K).",
+      "Initializes a register to hold the maximum attention score found so far, using the hexadecimal representation of -10000.0f.",
   },
-  { cuda: ``, ptx: ``, explanation: "Blank." },
-  { cuda: `    // Dot product`, ptx: ``, explanation: "Comment." },
+  {
+    cuda: `  for (int t2 = 0; ...`,
+    ptx: `mov.u32 %t2, 0;`,
+    explanation:
+      "This is the initialization part of the `for` loop, setting the loop counter `%t2` to 0.",
+  },
+  {
+    cuda: `  // Start of Pass 1 loop body`,
+    ptx: `$pass1_loop:`,
+    explanation: "This PTX label marks the beginning of the loop for Pass 1.",
+  },
+  {
+    cuda: `    const float *key_t2 = inp_b + t2 * C3 + h * hs + C;`,
+    ptx: `mad.lo.u32 %hhsC, %h, %hs, %C;\nmad.lo.u32 %offset, %t2, %C3, %hhsC;\nmad.wide.u32 %key_t2_ptr, %offset, 4, %inp_b_ptr;`,
+    explanation:
+      "Calculates the pointer to the key vector for token `t2`. The `+ C` offset (to select the Key part of the QKV projection) is handled in the first `mad` instruction.",
+  },
   {
     cuda: `    float val = 0.0f;`,
     ptx: `mov.f32 %val, 0f00000000;`,
-    explanation: "Accumulator for dot-product.",
+    explanation:
+      "Initializes an accumulator register for the dot product to zero.",
   },
   {
     cuda: `    for (int i = 0; i < hs; i++) {`,
-    ptx: `mov.u32 %i, 0;`,
-    explanation: "Inner loop over head-size.",
+    ptx: `mov.u32 %i, 0;\n$dot_product_loop: ... @%cond bra $dot_product_loop;`,
+    explanation:
+      "This inner dot product loop is implemented with explicit PTX instructions for initialization (`mov`), the loop label (`$dot_product_loop`), and a conditional branch at the end. It is not unrolled because its bound, `hs`, is a variable.",
   },
   {
     cuda: `      val += query_t[i] * key_t2[i];`,
-    ptx: `mad.wide.u32 %query_ti_ptr, %i, 4, %query_t_ptr;
-mad.wide.u32 %key_t2i_ptr, %i, 4, %key_t2_ptr;
-ld.global.f32 %q_val,  [%query_ti_ptr];
-ld.global.f32 %k_val,  [%key_t2i_ptr];
-fma.rn.f32    %val, %q_val, %k_val, %val;`,
+    ptx: `mad.wide.u32 %query_ti_ptr, %i, 4, %query_t_ptr;\nmad.wide.u32 %key_t2i_ptr, %i, 4, %key_t2_ptr;\nld.global.f32 %q_val, [%query_ti_ptr];\nld.global.f32 %k_val, [%key_t2i_ptr];\nfma.rn.f32 %val, %q_val, %k_val, %val;`,
     explanation:
-      "Fetch `Q[i]` and `K[i]`, perform fused-multiply-add into `val`.",
+      "The core of the dot product. It calculates addresses for the `i`-th element of the query and key vectors, loads them from global memory, and uses `fma.rn.f32` (fused multiply-add) to multiply them and add to the running sum in `%val`.",
   },
   {
-    cuda: `    }`,
-    ptx: `add.u32 %i, %i, 1;
-setp.lt.u32 %cond, %i, %hs;
-@%cond bra $dot_product_loop;`,
-    explanation: "Loop increment and test.",
+    cuda: `    // End of dot product loop`,
+    ptx: `add.u32 %i, %i, 1;\nsetp.lt.u32 %cond, %i, %hs;\n@%cond bra $dot_product_loop;`,
+    explanation:
+      "These instructions handle the dot product loop's control flow: incrementing `i`, checking if `i < hs`, and branching back if true.",
   },
   {
     cuda: `    val *= scale;`,
     ptx: `mul.f32 %val, %val, %scale;`,
-    explanation: "Apply scaling factor 1/√hs.",
+    explanation:
+      "Applies the scaling factor to the completed dot product score.",
   },
   {
-    cuda: `    if (val > maxval) {`,
-    ptx: `setp.gt.f32 %cond, %val, %maxval;`,
-    explanation: "Compare to running max.",
+    cuda: `    if (val > maxval) { maxval = val; }`,
+    ptx: `setp.gt.f32 %cond, %val, %maxval;\n@%cond mov.f32 %maxval, %val;`,
+    explanation:
+      "Updates the maximum value. `setp.gt.f32` sets a predicate if `val > maxval`, and the predicated `mov.f32` executes the update only if true.",
   },
-  {
-    cuda: `      maxval = val;`,
-    ptx: `@%cond mov.f32 %maxval, %val;`,
-    explanation: "Update max when predicate true.",
-  },
-  { cuda: `    }`, ptx: ``, explanation: "Close `if`." },
   {
     cuda: `    preatt_bth[t2] = val;`,
-    ptx: `mad.wide.u32 %preatt_bthi_ptr, %t2, 4, %preatt_bth_ptr;
-st.global.f32 [%preatt_bthi_ptr], %val;`,
-    explanation: "Store un-normalised attention score into `preatt` buffer.",
+    ptx: `mad.wide.u32 %preatt_bthi_ptr, %t2, 4, %preatt_bth_ptr;\nst.global.f32 [%preatt_bthi_ptr], %val;`,
+    explanation:
+      "Stores the raw, scaled attention score into the `preatt` matrix at column `t2`.",
   },
   {
-    cuda: `  }`,
-    ptx: `add.u32 %t2, %t2, 1;
-setp.le.u32 %cond, %t2, %t;
-@%cond bra $pass1_loop;`,
-    explanation: "End of outer loop.",
+    cuda: `  // End of Pass 1 loop`,
+    ptx: `add.u32 %t2, %t2, 1;\nsetp.le.u32 %cond, %t2, %t;\n@%cond bra $pass1_loop;`,
+    explanation:
+      "The control flow for the outer loop of Pass 1: increments `t2`, checks if `t2 <= t`, and branches back to `$pass1_loop` if true.",
   },
 
-  /* ──────────────────────  PASS 2  ────────────────────── */
-  { cuda: ``, ptx: ``, explanation: "Blank." },
-  {
-    cuda: `  // --- Pass 2: Calculate exponentials and sum for the softmax denominator`,
-    ptx: ``,
-    explanation: "Comment.",
-  },
-  {
-    cuda: `  // Each thread calculates its OWN sum, no block reduction.`,
-    ptx: ``,
-    explanation: "Comment.",
-  },
+  /* ────────────────────────────────────
+   // Pass 2: Calculate exponentials and sum
+   // ─────────────────────────────────── */
   {
     cuda: `  float expsum = 0.0f;`,
     ptx: `mov.f32 %expsum, 0f00000000;`,
-    explanation: "Init sum accumulator.",
+    explanation:
+      "Initializes the accumulator for the softmax denominator (`expsum`) to zero.",
   },
   {
-    cuda: `  for (int t2 = 0; t2 <= t; t2++) {`,
-    ptx: `mov.u32 %t2, 0;`,
-    explanation: "Loop setup.",
-  },
-  {
-    cuda: `    // Subtract maxval for numerical stability`,
-    ptx: ``,
-    explanation: "Comment.",
+    cuda: `  // Start of Pass 2 loop`,
+    ptx: `mov.u32 %t2, 0;\n$pass2_loop:`,
+    explanation:
+      "Resets the `%t2` counter to 0 and defines the starting label for the Pass 2 loop.",
   },
   {
     cuda: `    float expv = expf(preatt_bth[t2] - maxval);`,
-    ptx: `mad.wide.u32 %preatt_bthi_ptr, %t2, 4, %preatt_bth_ptr;
-ld.global.f32 %preatt_val, [%preatt_bthi_ptr];
-sub.f32       %preatt_val, %preatt_val, %maxval;
-mul.f32       %preatt_val, %preatt_val, 0f3fb8aa3b;
-ex2.approx.ftz.f32 %expv, %preatt_val;`,
+    ptx: `mad.wide.u32 %preatt_bthi_ptr, %t2, 4, %preatt_bth_ptr;\nld.global.f32 %preatt_val, [%preatt_bthi_ptr];\nsub.f32 %preatt_val, %preatt_val, %maxval;\nmul.f32 %preatt_val, %preatt_val, 0f3fb8aa3b;\nex2.approx.ftz.f32 %expv, %preatt_val;`,
     explanation:
-      "Loads raw score, subtracts max, scales log-e base to log-2, uses fast `ex2`.",
+      "Calculates `exp(score - maxval)`. It loads the score from `preatt`, subtracts `maxval` for stability, multiplies by `log2(e)` (`0f3fb8aa3b`), and finally computes the base-2 exponent with `ex2.approx.ftz.f32`.",
   },
   {
     cuda: `    expsum += expv;`,
     ptx: `add.f32 %expsum, %expsum, %expv;`,
-    explanation: "Accumulate the sum.",
+    explanation:
+      "Adds the newly calculated exponential value to the running sum in `%expsum`.",
   },
   {
-    cuda: `    att_bth[t2] = expv; // Store the numerator temporarily`,
-    ptx: `mad.wide.u32 %att_bthi_ptr, %t2, 4, %att_bth_ptr;
-st.global.f32 [%att_bthi_ptr], %expv;`,
-    explanation: "Save numerator.",
+    cuda: `    att_bth[t2] = expv;`,
+    ptx: `mad.wide.u32 %att_bthi_ptr, %t2, 4, %att_bth_ptr;\nst.global.f32 [%att_bthi_ptr], %expv;`,
+    explanation:
+      "Stores the temporary, un-normalized numerator value into the final `att` matrix.",
   },
   {
-    cuda: `  }`,
-    ptx: `add.u32 %t2, %t2, 1;
-setp.le.u32 %cond, %t2, %t;
-@%cond bra $pass2_loop;`,
-    explanation: "Loop end.",
+    cuda: `  // End of Pass 2 loop`,
+    ptx: `add.u32 %t2, %t2, 1;\nsetp.le.u32 %cond, %t2, %t;\n@%cond bra $pass2_loop;`,
+    explanation:
+      "The control flow for the Pass 2 loop, which increments and checks the `t2` counter.",
   },
   {
     cuda: `  float expsum_inv = expsum == 0.0f ? 0.0f : 1.0f / expsum;`,
-    ptx: `mov.f32 %expsum_inv, 0f00000000;
-setp.eq.f32 %cond, %expsum, 0f00000000;
-@!%cond rcp.rn.f32 %expsum_inv, %expsum;`,
-    explanation: "Avoid divide-by-zero with predicate; otherwise reciprocal.",
+    ptx: `mov.f32 %expsum_inv, 0f00000000;\nsetp.eq.f32 %cond, %expsum, 0f00000000;\n@!%cond rcp.rn.f32 %expsum_inv, %expsum;`,
+    explanation:
+      "Safely calculates `1.0/expsum`. It initializes the result to 0.0. A predicate checks if `expsum` is zero. If it is *not* zero (`@!%cond`), the `rcp.rn.f32` instruction computes the reciprocal.",
   },
 
-  /* ──────────────────────  PASS 3  ────────────────────── */
-  { cuda: ``, ptx: ``, explanation: "Blank." },
-  {
-    cuda: `  // --- Pass 3: Normalize to get final softmax scores ---`,
-    ptx: ``,
-    explanation: "Comment.",
-  },
+  /* ────────────────────────────────────
+   // Pass 3: Normalize scores and zero future tokens
+   // ─────────────────────────────────── */
   {
     cuda: `  for (int t2 = 0; t2 <= t; t2++) {`,
-    ptx: `mov.u32 %t2, 0;`,
-    explanation: "Loop over causal range again.",
+    ptx: `mov.u32 %t2, 0;\n$pass3_loop:`,
+    explanation:
+      "Initializes the Pass 3 loop, which will normalize the attention scores.",
   },
   {
     cuda: `    att_bth[t2] *= expsum_inv;`,
-    ptx: `mad.wide.u32 %att_bthi_ptr, %t2, 4, %att_bth_ptr;
-ld.global.f32 %att_val, [%att_bthi_ptr];
-mul.f32       %att_val, %att_val, %expsum_inv;
-st.global.f32 [%att_bthi_ptr], %att_val;`,
-    explanation: "Multiply numerator by `1/sum` to obtain probability.",
+    ptx: `mad.wide.u32 %att_bthi_ptr, %t2, 4, %att_bth_ptr;\nld.global.f32 %att_val, [%att_bthi_ptr];\nmul.f32 %att_val, %att_val, %expsum_inv;\nst.global.f32 [%att_bthi_ptr], %att_val;`,
+    explanation:
+      "This is a read-modify-write operation. It loads the numerator from `att`, multiplies it by `expsum_inv`, and stores the final normalized score back.",
   },
   {
-    cuda: `  }`,
-    ptx: `add.u32 %t2, %t2, 1;
-setp.le.u32 %cond, %t2, %t;
-@%cond bra $pass3_loop;`,
-    explanation: "Loop end.",
-  },
-  {
-    cuda: `  // Explicitly zero out future tokens`,
-    ptx: ``,
-    explanation: "Comment.",
+    cuda: `  // End of Pass 3 normalization loop`,
+    ptx: `add.u32 %t2, %t2, 1;\nsetp.le.u32 %cond, %t2, %t;\n@%cond bra $pass3_loop;`,
+    explanation: "Control flow for the normalization loop.",
   },
   {
     cuda: `  for (int t2 = t + 1; t2 < T; t2++) {`,
-    ptx: `add.u32 %t2, %t, 1;  // start at t+1`,
-    explanation: "Loop initialised to the first illegal (future) timestep.",
+    ptx: `add.u32 %t2, %t, 1;\nbra $zero_out_check;\n$zero_out_loop:`,
+    explanation:
+      "Initializes the loop to zero out future tokens for causality. It starts `t2` at `t+1`.",
   },
   {
     cuda: `    att_bth[t2] = 0.0f;`,
-    ptx: `mad.wide.u32 %att_bthi_ptr, %t2, 4, %att_bth_ptr;
-st.global.f32 [%att_bthi_ptr], 0f00000000;`,
-    explanation: "Write zero to padded position.",
+    ptx: `mad.wide.u32 %att_bthi_ptr, %t2, 4, %att_bth_ptr;\nst.global.f32 [%att_bthi_ptr], 0f00000000;`,
+    explanation:
+      "Stores the value 0.0f into the `att` matrix for a future token position.",
   },
   {
-    cuda: `  }`,
-    ptx: `add.u32 %t2, %t2, 1;
-setp.lt.u32 %cond, %t2, %T;
-@%cond bra $zero_out_loop;`,
-    explanation: "Loop end.",
+    cuda: `  // End of zeroing loop`,
+    ptx: `add.u32 %t2, %t2, 1;\n$zero_out_check:\nsetp.lt.u32 %cond, %t2, %T;\n@%cond bra $zero_out_loop;`,
+    explanation:
+      "Control flow for the zeroing loop, which continues as long as `t2 < T`.",
   },
 
-  /* ──────────────────────  PASS 4  ────────────────────── */
-  { cuda: ``, ptx: ``, explanation: "Blank." },
-  {
-    cuda: `  // --- Pass 4: Accumulate weighted values into the output ---`,
-    ptx: ``,
-    explanation: "Comment.",
-  },
+  /* ────────────────────────────────────
+   // Pass 4: Accumulate weighted values
+   // ─────────────────────────────────── */
   {
     cuda: `  float *out_bth = out + (b * T * C) + (t * C) + (h * hs);`,
-    ptx: `mul.lo.u32 %tC, %t, %C;
-mul.lo.u32 %bT, %b, %T;
-mad.lo.u32 %bth_offset, %bT, %C, %tC;
-mad.lo.u32 %bth_offset, %h, %hs, %bth_offset;
-mad.wide.u32 %out_bth_ptr, %bth_offset, 4, %out_ptr;`,
-    explanation: "Pointer to output vector for (b,t,h) query position.",
+    ptx: `mul.lo.u32 %tC, %t, %C;\nmad.lo.u32 %bth_offset, %bT, %C, %tC;\nmad.lo.u32 %bth_offset, %h, %hs, %bth_offset;\nmad.wide.u32 %out_bth_ptr, %bth_offset, 4, %out_ptr;`,
+    explanation:
+      "Calculates the final output pointer for this thread's vector slot.",
   },
   {
-    cuda: `  for (int i = 0; i < hs; i++) {`,
-    ptx: `mov.u32 %i, 0;`,
-    explanation: "Initialise loop that zeroes output slice.",
-  },
-  {
-    cuda: `    out_bth[i] = 0.0f;`,
-    ptx: `mad.wide.u32 %out_bthi_ptr, %i, 4, %out_bth_ptr;
-st.global.f32 [%out_bthi_ptr], 0f00000000;`,
-    explanation: "Set element to zero.",
-  },
-  {
-    cuda: `  }`,
-    ptx: `add.u32 %i, %i, 1;
-setp.lt.u32 %cond, %i, %hs;
-@%cond bra $init_zero_loop;`,
-    explanation: "End of zero-initialisation loop.",
+    cuda: `  for (int i = 0; i < hs; i++) { out_bth[i] = 0.0f; }`,
+    ptx: `mov.u32 %i, 0;\n$init_zero_loop: ... st.global.f32 [%out_bthi_ptr], 0f00000000; ...`,
+    explanation:
+      "This loop initializes the output vector in global memory to all zeros before starting accumulation.",
   },
   {
     cuda: `  for (int t2 = 0; t2 <= t; t2++) {`,
-    ptx: `mov.u32 %t2, 0;`,
-    explanation: "Outer accumulation loop begins.",
+    ptx: `mov.u32 %t2, 0;\n$accumulate_loop:`,
+    explanation:
+      "Initializes the final accumulation loop, which aggregates the weighted `value` vectors.",
   },
   {
-    cuda: `    // Pointer to the value vector for position t2`,
-    ptx: ``,
-    explanation: "Comment.",
-  },
-  {
-    cuda: `    const float *value_t2 =`,
-    ptx: `// address assembled in PTX just before inner loop`,
-    explanation: "Line split continuation – see next entry.",
-  },
-  {
-    cuda: `        inp_b + t2 * C3 + h * hs + C * 2; // +2C offset for value`,
-    ptx: `shl.b32 %C2, %C, 1;            // 2*C
-mad.lo.u32 %offset, %h, %hs, %C2;
-mad.lo.u32 %value_t2_offset, %t2, %C3, %offset;
-mad.wide.u32 %value_t2_ptr, %value_t2_offset, 4, %inp_b_ptr;`,
-    explanation: "Pointer for the V (value) vector at `t2` (offset +2C).",
+    cuda: `    const float *value_t2 = inp_b + t2 * C3 + h * hs + C * 2;`,
+    ptx: `shl.b32 %C2, %C, 1;\nmad.lo.u32 %offset, %h, %hs, %C2;\nmad.lo.u32 %value_t2_offset, %t2, %C3, %offset;\nmad.wide.u32 %value_t2_ptr, %value_t2_offset, 4, %inp_b_ptr;`,
+    explanation:
+      "Calculates the pointer to the `value` vector for token `t2`. The `+ C*2` offset is implemented with `shl.b32` (shift left by 1), which is a fast way to multiply by 2.",
   },
   {
     cuda: `    float att_score = att_bth[t2];`,
-    ptx: `mad.wide.u32 %att_bthi_ptr, %t2, 4, %att_bth_ptr;
-ld.global.f32 %att_val_f32, [%att_bthi_ptr];`,
-    explanation: "Load attention weight.",
+    ptx: `mad.wide.u32 %att_bthi_ptr, %t2, 4, %att_bth_ptr;\nld.global.f32 %att_val_f32, [%att_bthi_ptr];`,
+    explanation:
+      "Loads the final, normalized attention score for the current `t2` token.",
   },
   {
     cuda: `    for (int i = 0; i < hs; i++) {`,
-    ptx: `mov.u32 %i, 0;`,
-    explanation: "Inner loop over head-size.",
+    ptx: `mov.u32 %i, 0;\n$accumulate_inner_loop:`,
+    explanation:
+      "Initializes the inner loop for aggregating the `value` vector components.",
   },
   {
     cuda: `      out_bth[i] += att_score * value_t2[i];`,
-    ptx: `mad.wide.u32 %value_t2i_ptr, %i, 4, %value_t2_ptr;
-ld.global.f32 %value_f32, [%value_t2i_ptr];
-mad.wide.u32 %out_bthi_ptr, %i, 4, %out_bth_ptr;
-ld.global.f32 %out_val_f32, [%out_bthi_ptr];
-fma.rn.f32    %out_val_f32, %att_val_f32, %value_f32, %out_val_f32;
-st.global.f32 [%out_bthi_ptr], %out_val_f32;`,
+    ptx: `ld.global.f32 %value_f32, [%value_t2i_ptr];\nld.global.f32 %out_val_f32, [%out_bthi_ptr];\nfma.rn.f32 %out_val_f32, %att_val_f32, %value_f32, %out_val_f32;\nst.global.f32 [%out_bthi_ptr], %out_val_f32;`,
     explanation:
-      "Fused multiply-add accumulates weighted value into the output slice.",
+      "The final accumulation step. It loads the `value` component, loads the current `out` component, performs the weighted sum `att_score * value + out` using `fma`, and stores the new result back.",
   },
   {
-    cuda: `    }`,
-    ptx: `add.u32 %i, %i, 1;
-setp.lt.u32 %cond, %i, %hs;
-@%cond bra $accumulate_inner_loop;`,
-    explanation: "Inner loop close.",
+    cuda: `    // End of inner accumulation loop`,
+    ptx: `add.u32 %i, %i, 1;\nsetp.lt.u32 %cond, %i, %hs;\n@%cond bra $accumulate_inner_loop;`,
+    explanation: "Control flow for the inner accumulation loop.",
   },
   {
-    cuda: `  }`,
-    ptx: `add.u32 %t2, %t2, 1;
-setp.le.u32 %cond, %t2, %t;
-@%cond bra $accumulate_loop;`,
-    explanation: "Outer loop close.",
+    cuda: `  // End of outer accumulation loop`,
+    ptx: `add.u32 %t2, %t2, 1;\nsetp.le.u32 %cond, %t2, %t;\n@%cond bra $accumulate_loop;`,
+    explanation: "Control flow for the outer accumulation loop.",
   },
-
-  /* epilogue */
   {
     cuda: `}`,
-    ptx: `$exit:\n  ret;`,
+    ptx: `$exit:\nret;`,
     explanation:
-      "Closing brace – PTX label `$exit` and `ret` terminate the thread.",
+      "The common exit point for the kernel. The `ret` instruction ends execution for the thread.",
   },
 ];
 
 export const part7 = [
-  /* ──────────────────────────────────────────
-     Helpers (device functions, in-lined)
-     ───────────────────────────────────────── */
+  /* ────────────────────────────────────
+   // Vectorized Load/Store Helpers
+   // ─────────────────────────────────── */
   {
     cuda: `__device__ float4 ld_vec(const float *address) {`,
-    ptx: `/* in-lined, uses ld.global.v4.f32 where called */`,
+    ptx: `/* This function is inlined; its logic appears directly in the caller. */`,
     explanation:
-      "Device helper; compiler inlines it so there is no standalone PTX entry.",
+      "This helper function is designed to be inlined. It provides a C++ abstraction for performing a vectorized `float4` load.",
   },
   {
     cuda: `  return *reinterpret_cast<const float4 *>(address);`,
-    ptx: `ld.global.v4.f32`,
-    explanation: "At call-sites this becomes a 128-bit vector load.",
+    ptx: `ld.global.v4.f32 {r1,r2,r3,r4}, [addr];\n/* or ld.shared.v4.f32 */`,
+    explanation:
+      "The core of `ld_vec`. The `reinterpret_cast` tells the programmer (and a compiler) to treat the `float*` as a `float4*`. In the handwritten PTX, this is implemented using a single vectorized load instruction to read 16 bytes into four registers.",
   },
-  { cuda: `}`, ptx: ``, explanation: "Close helper." },
-
+  { cuda: `}`, ptx: ``, explanation: "End of the `ld_vec` function." },
   {
     cuda: `__device__ void st_vec(float *address, float4 val) {`,
-    ptx: `/* in-lined, uses st.global.v4.f32 where called */`,
-    explanation: "Store helper; likewise inlined.",
+    ptx: `/* This function is inlined; its logic appears directly in the caller. */`,
+    explanation:
+      "A helper function for performing a vectorized `float4` store. It is also inlined in the PTX.",
   },
   {
     cuda: `  *reinterpret_cast<float4 *>(address) = val;`,
-    ptx: `st.global.v4.f32`,
-    explanation: "128-bit store emitted at each call-site.",
+    ptx: `st.global.v4.f32 [addr], {r1,r2,r3,r4};\n/* or st.shared.v4.f32 */`,
+    explanation:
+      "This C++ line is implemented in PTX using a single vectorized store instruction, which writes the contents of four registers (16 bytes) to the specified memory address.",
   },
-  { cuda: `}`, ptx: ``, explanation: "Close helper." },
+  { cuda: `}`, ptx: ``, explanation: "End of the `st_vec` function." },
 
-  /* ──────────────────────────────────────────
-     Kernel signature & launch bounds
-     ───────────────────────────────────────── */
+  /* ────────────────────────────────────
+   // Kernel Definition and Setup
+   // ─────────────────────────────────── */
   {
     cuda: `__global__ void __launch_bounds__(16 * 16)`,
-    ptx: `.visible .entry matmul_fwd_kernel ... .maxntid 256,1,1`,
+    ptx: `.maxntid 256, 1, 1`,
     explanation:
-      "`__launch_bounds__` informs the compiler; PTX shows `.maxntid 256,1,1` (16×16 threads = 256).",
+      "`__launch_bounds__` specifies the thread block size, `16*16=256`. This directly corresponds to the `.maxntid` directive, which sets the maximum number of threads per block.",
   },
   {
-    cuda: `    matmul_fwd_kernel(float *out, const float *inp, const float *weight,`,
-    ptx: `.param .u64 out_param … weight_param`,
-    explanation: "Pointer parameters become 64-bit `.u64` entry params.",
+    cuda: `    matmul_fwd_kernel(float *out, const float *inp, const float *weight, const float *bias, int C, int OC) {`,
+    ptx: `.visible .entry matmul_fwd_kernel(\n  .param .u64 out_param, \n  .param .u64 inp_param, \n  .param .u64 weight_param, \n  .param .u64 bias_param, \n  .param .u32 C_param, \n  .param .u32 OC_param\n)`,
+    explanation:
+      "The kernel's entry point definition. Each C++ argument is explicitly defined as a parameter with a specific type in PTX. Pointers are 64-bit unsigned integers (`.u64`), and standard integers are 32-bit (`.u32`).",
   },
-  {
-    cuda: `                      const float *bias, int C, int OC) {`,
-    ptx: `.param .u64 bias_param, .param .u32 C_param, .param .u32 OC_param`,
-    explanation: "Final pointer + two scalar ints complete the parameter list.",
-  },
-
-  /* Kernel-header comments (no PTX) */
-  {
-    cuda: `  // out is (B,T,OC). OC is short for "output channels", e.g. OC = 4 * C`,
-    ptx: ``,
-    explanation: "Comment only.",
-  },
-  {
-    cuda: `  // inp is (B,T,C), weight is (OC, C), bias is (OC)`,
-    ptx: ``,
-    explanation: "Comment.",
-  },
-  {
-    cuda: `  // each thread handles 8x8 elements; each block 128 by 128 elements.`,
-    ptx: ``,
-    explanation: "Comment.",
-  },
-
-  /* ------------------------------------------------------------------
-     1.   Per-thread output-channel base  (oc = 8*(blockDim.y*blockIdx.y+threadIdx.y))
-     ------------------------------------------------------------------ */
   {
     cuda: `  int oc = 8 * (blockIdx.y * blockDim.y + threadIdx.y);`,
-    ptx: `mov %bidx_y …; mad.lo.u32 %oc, %bidx_y, %ntid.y, %tid.y; mul.lo.u32 %oc, %oc, 8;`,
-    explanation: "Combines block and thread Y-indices, scales by 8.",
-  },
-
-  /* ------------------------------------------------------------------
-     2.   Shared-memory declarations
-     ------------------------------------------------------------------ */
-  {
-    cuda: `  // buffers to cache chunks of the input matrices`,
-    ptx: ``,
-    explanation: "Comment.",
+    ptx: `mov.u32 %bidx_y, %ctaid.y;\nmov.u32 %bdim_y, %ntid.y;\nmov.u32 %tid_y, %tid.y;\nmad.lo.u32 %oc, %bidx_y, %bdim_y, %tid_y;\nmul.lo.u32 %oc, %oc, 8;`,
+    explanation:
+      "This calculates a unique row offset for the thread's 8x8 tile. The PTX first loads block index, block dimension, and thread index from special registers. It then uses `mad.lo.u32` to compute the global thread ID in the Y dimension, and `mul.lo.u32` to scale it by 8.",
   },
   {
     cuda: `  __shared__ float lhs_s[128][32];`,
     ptx: `.shared .align 4 .b8 lhs_shared[16384];`,
-    explanation: "128×32 floats (16 KiB) reserved in shared memory.",
+    explanation:
+      "Allocates a tile in shared memory for the `inp` matrix. The total size is `128 * 32 * sizeof(float) = 16384` bytes. In PTX, this is declared as a raw byte array (`.b8`) with 4-byte alignment.",
   },
   {
     cuda: `  __shared__ float rhs_s[128][32];`,
     ptx: `.shared .align 4 .b8 rhs_shared[16384];`,
-    explanation: "Second 16 KiB shared buffer.",
-  },
-
-  /* ------------------------------------------------------------------
-     3.   Block-level pointer adjustment
-     ------------------------------------------------------------------ */
-  {
-    cuda: `  // adjust our pointers for the current block`,
-    ptx: ``,
-    explanation: "Comment.",
+    explanation:
+      "Allocates a second shared memory tile for the `weight` matrix.",
   },
   {
     cuda: `  inp += 128 * blockIdx.x * C;`,
-    ptx: `mad.lo.u32 %inp_offset, %ctaid.x*128, %C; mad.wide.u32 …`,
-    explanation: "Byte offset added to `%inp_ptr`.",
+    ptx: `mul.lo.u32 %bidx_x_128, %bidx_x, 128;\nmad.lo.u32 %inp_offset, %bidx_x_128, %C, 0;\nmad.wide.u32 %inp_ptr, %inp_offset, 4, %inp_ptr;`,
+    explanation:
+      "Offsets the `inp` pointer to the correct starting position for the current thread block. The element offset is calculated, then multiplied by 4 (bytes per float) and added to the base pointer using `mad.wide.u32`.",
   },
   {
     cuda: `  weight += 128 * blockIdx.y * C;`,
-    ptx: `mad.lo.u32 %weight_offset, %ctaid.y*128, %C …`,
-    explanation: "Adjusts weight pointer for block’s column tile.",
+    ptx: `mul.lo.u32 %bidx_y_128, %bidx_y, 128;\nmad.lo.u32 %weight_offset, %bidx_y_128, %C, 0;\nmad.wide.u32 %weight_ptr, %weight_offset, 4, %weight_ptr;`,
+    explanation:
+      "Similarly offsets the `weight` pointer based on the block's Y index.",
   },
   {
     cuda: `  out += 128 * blockIdx.x * OC + 128 * blockIdx.y;`,
-    ptx: `mad.lo.u32  … two-term address calc`,
-    explanation: "Combines row and column tile offsets into output base.",
+    ptx: `mad.lo.u32 %out_offset_x, %bidx_x_128, %OC, 0;\nadd.u32 %out_offset, %out_offset_x, %bidx_y_128;\nmad.wide.u32 %out_ptr, %out_offset, 4, %out_ptr;`,
+    explanation:
+      "Offsets the `out` pointer to the top-left corner of the 128x128 output tile this block will compute.",
   },
-
-  /* ------------------------------------------------------------------
-     4.   Result tile initialisation (vals[8][8])
-     ------------------------------------------------------------------ */
   {
     cuda: `  float vals[8][8] = {};`,
-    ptx: `mov.f32 %vals1-%vals64, 0f00000000`,
-    explanation: "64 floating registers zero-initialised.",
+    ptx: `.reg .f32 %vals<65>;\nmov.f32 %vals1, 0f00000000;\n/* ... repeated for %vals2 through %vals8 ... */`,
+    explanation:
+      "This declares the 8x8 (64-element) register that will hold the thread's output tile. The PTX declares 65 registers and initializes the first few to 0.0. The rest are initialized during the bias load.",
   },
   {
     cuda: `  if (bias != NULL) {`,
-    ptx: `setp.ne.u64 %cond, %bias_ptr, 0; @!%cond bra after_bias;`,
-    explanation: "Predicate skip when `bias==NULL`.",
+    ptx: `setp.ne.u64 %cond, %bias_ptr, 0;\n@!%cond bra $after_load_bias;`,
+    explanation:
+      "Checks if a bias pointer was provided. The `setp.ne.u64` instruction sets a predicate flag if the pointer is not null. The `bra` (branch) instruction then skips the bias loading section if the condition is false (i.e., the pointer is null).",
   },
   {
-    cuda: `    for (int i = 0; i < 8; i++) {`,
-    ptx: `// bias loop unrolled by compiler`,
-    explanation: "Eight identical blocks of vector loads and copies.",
+    cuda: `    for (int i = 0; i < 8; i++) {\n      for (int j = 0; j < 8; j += 4) {\n        float4 b = ld_vec(bias + oc + j);`,
+    ptx: `mad.wide.u32 %b_ptr, %oc, 4, %bias_ptr;\nld.global.v4.f32 {%vals1, %vals2, %vals3, %vals4}, [%b_ptr];\nadd.u64 %b_ptr, %b_ptr, 16;\nld.global.v4.f32 {%vals5, %vals6, %vals7, %vals8}, [%b_ptr];`,
+    explanation:
+      "This is a highly optimized implementation of the C++ loops. The C++ code implies loading the same 8 bias values for each of the 8 rows. The PTX performs just two `float4` loads to fetch the 8 required bias values into the first 8 `%vals` registers (`vals[0][0]` through `vals[0][7]`).",
   },
   {
-    cuda: `      for (int j = 0; j < 8; j += 4) {`,
-    ptx: `ld.global.v4.f32 …`,
-    explanation: "Loads 4 bias values at a time.",
+    cuda: `        vals[i][j + 0] = b.x; ...`,
+    ptx: `mov.f32 %vals9, %vals1;\nmov.f32 %vals10, %vals2;\n/* ... this block of mov instructions continues for all 64 registers ... */`,
+    explanation:
+      "This corresponds to the `i` loop in the C++. The PTX unrolls this loop and broadcasts the 8 loaded bias values across the entire 8x8 register file. For example, `%vals9` (for `vals[1][0]`) gets the value from `%vals1` (from `vals[0][0]`), and so on.",
   },
-  {
-    cuda: `        float4 b = ld_vec(bias + oc + j);`,
-    ptx: `ld.global.v4.f32`,
-    explanation: "128-bit load of bias slice.",
-  },
-  {
-    cuda: `        vals[i][j + 0] = b.x;`,
-    ptx: `mov.f32`,
-    explanation: "Scalar copy to register.",
-  },
-  {
-    cuda: `        vals[i][j + 1] = b.y;`,
-    ptx: `mov.f32`,
-    explanation: "Copy.",
-  },
-  {
-    cuda: `        vals[i][j + 2] = b.z;`,
-    ptx: `mov.f32`,
-    explanation: "Copy.",
-  },
-  {
-    cuda: `        vals[i][j + 3] = b.w;`,
-    ptx: `mov.f32`,
-    explanation: "Copy.",
-  },
-  {
-    cuda: `      }`,
-    ptx: `/* loop indexing handled by compiler */`,
-    explanation: "Inner bias loop end.",
-  },
-  { cuda: `    }`, ptx: `/* loop end */`, explanation: "Outer bias loop end." },
-  { cuda: `  }`, ptx: `after_bias:`, explanation: "Predicate join." },
 
-  /* ------------------------------------------------------------------
-     5.   Main K-dimension loop
-     ------------------------------------------------------------------ */
-  {
-    cuda: `  int si_start = 4 * (16 * threadIdx.y + threadIdx.x);`,
-    ptx: `mad.lo.u32 %si_start, 16, %tid.y, %tid.x; mul.lo.u32 %si_start, %si_start, 4;`,
-    explanation: "Starting slice index for this thread.",
-  },
+  /* ────────────────────────────────────
+   // Main Calculation Loop
+   // ─────────────────────────────────── */
   {
     cuda: `  for (int so = 0; so < C; so += 32) {`,
-    ptx: `mov.u32 %so,0;  loop_so: … add 32`,
-    explanation: "`so` iterates over K in 32-element chunks.",
+    ptx: `mov.u32 %so, 0;\n$loop_body: ... $loop_check:\nsetp.lt.u32 %cond, %so, %C;\n@%cond bra $loop_body;`,
+    explanation:
+      "This is the main outer loop that iterates through the `C` dimension in chunks of 32. The PTX code manually implements this with a counter (`%so`), labels (`$loop_body`, `$loop_check`), a comparison (`setp.lt.u32`), and a conditional branch (`bra`).",
   },
-
   {
     cuda: `    __syncthreads();`,
     ptx: `bar.sync 0;`,
-    explanation: "Barrier before loading new tiles.",
-  },
-
-  /* ------ 5a. Tile load into shared memory ------ */
-  {
-    cuda: `    int xmod8 = threadIdx.x % 8;`,
-    ptx: `rem.u32 %xmod8, %tid.x, 8;`,
-    explanation: "Remainder calc.",
-  },
-  {
-    cuda: `    int xby8 = threadIdx.x / 8;`,
-    ptx: `shr.b32 %xby8, %tid.x, 3;`,
-    explanation: "Division by 8 via shift.",
-  },
-  {
-    cuda: `    int xo = 4 * xmod8;`,
-    ptx: `mul.lo.u32 %xo, %xmod8, 4;`,
-    explanation: "Byte offset within row (4 floats).",
+    explanation:
+      "First barrier of the loop. It ensures that all threads have finished their calculations from the *previous* iteration before they start loading new data into shared memory.",
   },
   {
     cuda: `    for (int y = 2 * threadIdx.y + xby8; y < 128; y += 32) {`,
-    ptx: `loop_y: … add.y 32`,
-    explanation: "Each thread stores multiple rows of both tiles.",
+    ptx: `$store_loop_body: ... $store_loop_check:\n  setp.lt.u32 %cond, %y, 128;\n  @%cond bra $store_loop_body;`,
+    explanation:
+      "This loop has threads cooperatively load data from global to shared memory. Each thread loads several `float4` vectors. The PTX implements this with a standard loop structure.",
   },
   {
     cuda: `      st_vec(&lhs_s[y][xo], ld_vec(inp + y * C + so + xo));`,
-    ptx: `ld.global.v4.f32 …; st.shared.v4.f32 …`,
-    explanation: "Vector load from global; vector store to `lhs_shared`.",
+    ptx: `mad.wide.u32 %inp_ptr_i, ...\nld.global.v4.f32 {%lhs_s1, ...}, [%inp_ptr_i];\nmad.wide.u32 %lhs_s_ptr, ...\nst.shared.v4.f32 [%lhs_s_ptr], {%lhs_s1, ...};`,
+    explanation:
+      "The core of the data loading step. The PTX first calculates the source address in global memory (`inp_ptr_i`), loads a `float4` vector, calculates the destination address in shared memory (`lhs_s_ptr`), and stores the vector there.",
   },
-  {
-    cuda: `      st_vec(&rhs_s[y][xo], ld_vec(weight + y * C + so + xo));`,
-    ptx: `ld.global.v4.f32 …; st.shared.v4.f32 …`,
-    explanation: "Same for RHS tile.",
-  },
-  { cuda: `    }`, ptx: `/* y-loop end */`, explanation: "Y-loop concludes." },
   {
     cuda: `    __syncthreads();`,
     ptx: `bar.sync 0;`,
-    explanation: "Ensure tiles are fully in shared memory.",
+    explanation:
+      "Second barrier of the loop. This is critical. It ensures that all data for the current tile is fully loaded into `lhs_s` and `rhs_s` before any thread starts performing calculations with it.",
   },
-
-  /* ------ 5b. Compute 32-column micro-tile ------ */
   {
     cuda: `    for (int si = si_start; si < si_start + 32; si += 4) {`,
-    ptx: `loop_si: … add 4`,
-    explanation: "`si` selects slices (4 columns) inside the 32-element tile.",
+    ptx: `mov.u32 %si, %si_start;\n$si_loop_body: ... \nadd.u32 %si, %si, 4;\n$si_loop_check: ...`,
+    explanation:
+      "This loop iterates through the 32-element wide tile currently in shared memory. Since each step processes a `float4`, the loop increments by 4.",
   },
   {
-    cuda: `      float4 rhs[8];`,
-    ptx: `/* eight ld.shared.v4.f32 into %rhs_s#_* registers */`,
-    explanation: "Loads an 8-vector column block from `rhs_shared`.",
+    cuda: `      float4 rhs[8];\n      for (int u = 0; u < 8; ++u) {\n        rhs[u] = ld_vec(&rhs_s[u + 8 * threadIdx.y][si % 32]);\n      }`,
+    ptx: `ld.shared.v4.f32 {%rhs_s0_1, ...}, [%rhs_s_ptr];\nadd.u64 %rhs_s_ptr, ...\nld.shared.v4.f32 {%rhs_s1_1, ...}, [%rhs_s_ptr];\n/* ... repeated for all 8 rhs vectors ... */`,
+    explanation:
+      "This loop loads the 8 necessary `rhs` vectors for this thread from shared memory into local registers. The PTX fully unrolls this, issuing 8 separate `ld.shared.v4.f32` instructions.",
   },
-  {
-    cuda: `      for (int u = 0; u < 8; ++u) {`,
-    ptx: `/* unrolled, 8 vector loads */`,
-    explanation: "Compiler unrolls the loop entirely.",
-  },
-  {
-    cuda: `        rhs[u] = ld_vec(&rhs_s[u + 8 * threadIdx.y][si % 32]);`,
-    ptx: `ld.shared.v4.f32`,
-    explanation: "Load into registers.",
-  },
-  {
-    cuda: `      }`,
-    ptx: `/* u-loop end */`,
-    explanation: "End of RHS load loop.",
-  },
-
   {
     cuda: `      for (int ii = 0; ii < 8; ++ii) {`,
-    ptx: `/* inner ii loop fully unrolled */`,
-    explanation: "Eight rows processed, fully unrolled.",
+    ptx: `/* The 'ii' loop is fully unrolled in the PTX code below. */`,
+    explanation:
+      "This loop iterates over the 8 rows of the thread's output tile. It is completely unrolled in the PTX to maximize instruction-level parallelism.",
   },
   {
     cuda: `        float4 lhs = ld_vec(&lhs_s[ii + 8 * threadIdx.x][si % 32]);`,
-    ptx: `ld.shared.v4.f32`,
-    explanation: "Load LHS vector for row `ii`.",
-  },
-  {
-    cuda: `        for (int ji = 0; ji < 8; ++ji) {`,
-    ptx: `/* 8 × 4 = 32 multiply-adds per row */`,
-    explanation: "Inner-most accumulation loop unrolled.",
-  },
-  {
-    cuda: `          vals[ii][ji] += lhs.x * rhs[ji].x;`,
-    ptx: `fma.rn.f32 %vals…, %lhs_1, %rhs_s#_1, %vals…`,
+    ptx: `ld.shared.v4.f32 {%lhs_1, %lhs_2, %lhs_3, %lhs_4}, [%lhs_s_ptr];`,
     explanation:
-      "Four fused multiply-adds per *ji*; compiler emits 256 FMA per `si` slice.",
+      "Inside the unrolled `ii` loop, this line loads one `lhs` vector from shared memory. This vector will be used for calculations for an entire row of the `vals` tile.",
   },
   {
-    cuda: `          vals[ii][ji] += lhs.y * rhs[ji].y;`,
-    ptx: `/* many fma.rn.f32 … (see PTX) */`,
-    explanation: "Continuation of FMA chain.",
+    cuda: `        for (int ji = 0; ji < 8; ++ji) {\n          vals[ii][ji] += lhs.x * rhs[ji].x; ... \n        }`,
+    ptx: `fma.rn.f32 %vals1, %lhs_1, %rhs_s0_1, %vals1;\nfma.rn.f32 %vals1, %lhs_2, %rhs_s0_2, %vals1;\nfma.rn.f32 %vals1, %lhs_3, %rhs_s0_3, %vals1;\nfma.rn.f32 %vals1, %lhs_4, %rhs_s0_4, %vals1;\n/* ... this pattern of 4 fma's repeats for vals2 through vals8 ...*/`,
+    explanation:
+      "This is the heart of the computation. Both the `ji` loop and the four component-wise multiply-adds are unrolled. This block of `fma.rn.f32` (fused multiply-add) instructions performs the dot product between the loaded `lhs` vector and each of the 8 `rhs` vectors, accumulating the results into the `vals` registers for the current row (`ii`).",
   },
   {
-    cuda: `          vals[ii][ji] += lhs.z * rhs[ji].z;`,
-    ptx: `/* many fma.rn.f32 … */`,
-    explanation: "Same.",
-  },
-  {
-    cuda: `          vals[ii][ji] += lhs.w * rhs[ji].w;`,
-    ptx: `/* many fma.rn.f32 … */`,
-    explanation: "Same.",
-  },
-  {
-    cuda: `        }`,
-    ptx: `/* ji-loop end */`,
-    explanation: "Finish accumulation for this row.",
-  },
-  {
-    cuda: `      }`,
-    ptx: `/* ii-loop end */`,
-    explanation: "Finish 8-row micro-tile.",
-  },
-  {
-    cuda: `    }`,
-    ptx: `add.u32 %si, … ; @cmp bra loop_si`,
-    explanation: "Advance `si` by 4 until 32 columns consumed.",
-  },
-  {
-    cuda: `  }`,
-    ptx: `add.u32 %so, 32 ; @cmp bra loop_so`,
-    explanation: "Advance `so` to next K-tile (32 columns) until `C` done.",
+    cuda: `      /* End of ii loop */`,
+    ptx: `/* The block of (ld.shared + 32 * fma) is repeated 7 more times for ii=1..7 */`,
+    explanation:
+      "The entire pattern of loading an `lhs` vector and performing 32 `fma` operations is duplicated in the PTX code for each of the 8 rows of the output tile.",
   },
 
-  /* ------------------------------------------------------------------
-     6.   Write the 8×8 result tile back to global
-     ------------------------------------------------------------------ */
+  /* ────────────────────────────────────
+   // Write-back to Global Memory
+   // ─────────────────────────────────── */
   {
-    cuda: `  for (int i = 0; i < 8; ++i) {`,
-    ptx: `/* eight store pairs, unrolled */`,
-    explanation: "Compiler writes two `st.global.v4.f32` per row (8 floats).",
+    cuda: `  for (int i = 0; i < 8; ++i) {\n    for (int j = 0; j < 8; j += 4) {\n      st_vec(out + ..., result);\n    }\n  }`,
+    ptx: `mad.wide.u32 %out_s_ptr, ... \n/* This entire nested loop is unrolled below */`,
+    explanation:
+      "The final loops write the computed 8x8 tile from registers back to global memory. The PTX completely unrolls these loops for maximum throughput.",
   },
   {
-    cuda: `    for (int j = 0; j < 8; j += 4) {`,
-    ptx: `/* j loop unrolled (j=0,4) */`,
-    explanation: "Two vector stores each row.",
+    cuda: `  /* Iteration i = 0 */`,
+    ptx: `st.global.v4.f32 [%out_s_ptr], {%vals1, %vals2, %vals3, %vals4};\nadd.u64 %b_ptr, %out_s_ptr, 16;\nst.global.v4.f32 [%b_ptr], {%vals5, %vals6, %vals7, %vals8};`,
+    explanation:
+      "This corresponds to the first row (`i=0`). The first 8 registers (`%vals1` to `%vals8`) are stored using two `st.global.v4.f32` instructions.",
   },
   {
-    cuda: `      float4 result;`,
-    ptx: `// values already scattered in %vals registers`,
-    explanation: "Temporary struct mapped to registers.",
+    cuda: `  /* Iteration i = 1 */`,
+    ptx: `add.u64 %out_s_ptr, %out_s_ptr, %OC4;\nst.global.v4.f32 [%out_s_ptr], {%vals9, %vals10, %vals11, %vals12};\n...`,
+    explanation:
+      "For the next row (`i=1`), the output pointer is advanced by the row stride (`%OC4`), and the next 8 registers (`%vals9` to `%vals16`) are stored. This pattern continues for all 8 rows.",
   },
   {
-    cuda: `      result.x = vals[i][j + 0];`,
-    ptx: `mov`,
-    explanation: "Pack registers for store.",
+    cuda: `}`,
+    ptx: `ret;`,
+    explanation:
+      "The final instruction in the kernel, which ends its execution and returns control.",
   },
-  {
-    cuda: `      result.y = vals[i][j + 1];`,
-    ptx: `mov`,
-    explanation: "Pack.",
-  },
-  {
-    cuda: `      result.z = vals[i][j + 2];`,
-    ptx: `mov`,
-    explanation: "Pack.",
-  },
-  {
-    cuda: `      result.w = vals[i][j + 3];`,
-    ptx: `mov`,
-    explanation: "Pack.",
-  },
-  {
-    cuda: `      st_vec(out + (8 * threadIdx.x + i) * OC + 8 * threadIdx.y + j, result);`,
-    ptx: `st.global.v4.f32`,
-    explanation: "128-bit store of one 4-float slice.",
-  },
-  {
-    cuda: `    }`,
-    ptx: `/* j-loop end */`,
-    explanation: "End inner store loop.",
-  },
-  {
-    cuda: `  }`,
-    ptx: `/* i-loop end */`,
-    explanation: "Finished all 64 result elements.",
-  },
-
-  /* ------------------------------------------------------------------
-     7.   Kernel epilogue
-     ------------------------------------------------------------------ */
-  { cuda: `}`, ptx: `ret;`, explanation: "Kernel return." },
 ];
 
 // A simple regex-based highlighter for CUDA C++
@@ -2274,15 +1771,15 @@ export function App({ part }) {
   return (
     <main>
       {/* Header Row for larger screens */}
-      <div className="hidden md:grid grid-cols-1 md:grid-cols-2 lg:grid-cols-10 gap-x-6 font-mono text-base font-semibold border-b-2 border-gray-700 pb-3 mb-4">
+      <div className="hidden md:grid grid-cols-1 md:grid-cols-2 lg:grid-cols-10 gap-x-6 font-mono text-base font-semibold border-b-2 border-gray-700 pb-3 m-4">
         <div className="lg:col-span-3 text-green-400">CUDA C++</div>
         <div className="lg:col-span-3 text-yellow-400">PTX Assembly</div>
         <div className="lg:col-span-4 text-blue-400">Explanation</div>
       </div>
 
-      <div className="space-y-1">
+      <div className="space-y-1 m-4">
         {part.map((item, index) => (
-          <div className="m-0 p-0">
+          <div key={index} className="m-0 p-0">
             <div
               key={index}
               className="relative grid grid-cols-1 md:grid-cols-2 lg:grid-cols-10 gap-x-6  rounded-lg transition-all duration-300 ease-out"

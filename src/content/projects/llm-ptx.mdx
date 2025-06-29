@@ -1,0 +1,76 @@
+---
+id: llm-ptx
+title: "llm-ptx"
+summary: "Handwriting a GPT-2 in PTX, kernel by kernel."
+imageUrl: "/images/llm-ptx-01.png"
+tags: ["PTX", "CUDA", "C++"]
+featured: true
+date: 2025-07-17
+---
+
+import {CodeWindow} from '../../components/ui.jsx'
+import RepoCard from "react-repo-card";
+
+This project is a deep dive into the low-level world of GPU programming. The goal was to take Andrej Karpathy's `llm.c` and rewrite the GPT-2 inference implementation from scratch in PTX, NVIDIA's parallel thread execution assembly language.
+
+<div className="w-[200px] m-auto my-4">
+  <RepoCard username="theunnecessarythings" repository="llm-ptx" />
+</div>
+
+## The Journey
+
+The project was broken down into a series of blog posts, each tackling a specific kernel of the GPT-2 model. You can follow the journey from the initial setup to the final performance comparison here:
+
+1.  [Part I: Introduction & Residual Kernel](/blog/llm-ptx-01)
+2.  [Part II: The GELU Kernel](/blog/llm-ptx-02)
+3.  [Part III: The Encoder Kernel](/blog/llm-ptx-03)
+4.  [Part IV: The Layernorm Kernel](/blog/llm-ptx-04)
+5.  [Part V: The Softmax Kernel](/blog/llm-ptx-05)
+6.  [Part VI: The Attention Kernel](/blog/llm-ptx-06)
+7.  [Part VII: The Matmul Kernel & Performance Results](/blog/llm-ptx-07)
+
+## Performance
+
+The hand-written PTX version runs approximately **1.1 times faster** than the CUDA version on my system.
+
+<div className="w-full max-w-2xl mx-auto my-8 p-6 bg-gray-800 rounded-xl shadow-2xl border border-gray-700">
+  <div className="flex justify-around items-end space-x-4">
+    {/* CUDA Bar */}
+    <div className="flex flex-col items-center">
+      <div className="text-white text-4xl font-extrabold tracking-tighter">1474<span className="text-lg font-medium ml-1">ms</span></div>
+      <div className="w-24 h-48 bg-blue-500 rounded-t-lg mt-2 border-b-4 border-blue-300"></div>
+      <div className="mt-3 text-center text-blue-300 font-semibold">CUDA C++</div>
+    </div>
+
+    {/* Speedup Text */}
+    <div className="text-center pb-12">
+      <div className="text-5xl font-bold text-green-400">1.1x</div>
+      <div className="text-xl font-semibold text-white">Faster</div>
+      <div className="text-gray-400 mt-1">Execution Time</div>
+    </div>
+
+    {/* PTX Bar */}
+    <div className="flex flex-col items-center">
+      <div className="text-white text-4xl font-extrabold tracking-tighter">1340<span className="text-lg font-medium ml-1">ms</span></div>
+      <div className="w-24 h-40 bg-green-500 rounded-t-lg mt-2 border-b-4 border-green-300"></div>
+      <div className="mt-3 text-center text-green-300 font-semibold">Hand-written PTX</div>
+    </div>
+  </div>
+  <div className="text-center text-gray-400 mt-6 text-sm">
+    Hand-optimizing the kernels in PTX yielded a tangible ~10% performance increase over the compiler-optimized CUDA C++ code.
+  </div>
+</div>
+
+## Compilation
+
+### PTX Version
+
+<div className="w-5/6 m-auto">
+<CodeWindow title="Compile PTX Version" language="bash" code={`nvcc --use_fast_math -std=c++17 -O3 main.cu -o main_ptx -lcuda -arch=sm_80 -DPTX\n./main_ptx`} />
+</div>
+
+### CUDA Version
+
+<div className="w-5/6 m-auto">
+<CodeWindow title="Compile CUDA Version" language="bash" code={`nvcc --use_fast_math -std=c++17 -O3 main.cu -o main_cuda -lcuda -arch=sm_80\n./main_cuda`} />
+</div>

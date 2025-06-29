@@ -1,14 +1,123 @@
 ---
 id: 5
 featured: false
-date: "June 5, 2025"
+date: "July 3, 2025"
 title: "GPT2 From Scratch in PTX - Part V (Softmax Kernel)"
-summary: ""
-readTime: "00:07:53:60"
+summary: "In this part, we will be implementing softmax kernel from scratch in PTX"
+readTime: "00:08:45:10"
 imageUrl: "/images/llm-ptx-05.png"
 tags: ["PTX", "CUDA", "C++"]
 ---
 
 import {App, part5} from './llm-ptx.jsx'
+import {CodeWindow} from '../../components/ui.jsx'
+import RepoCard from "react-repo-card";
+
+<div className="w-[200px] m-auto my-4">
+  <RepoCard username="theunnecessarythings" repository="llm-ptx" />
+</div>
+
+In the previous part we implemented the layer normalization kernel. Like layer normalization, softmax is a normalization function that requires a multi-pass approach with parallel reductions across threads. It’s the final step in the network, responsible for taking the raw output logits and converting them into clean, interpretable probabilities. The process involves finding the maximum logit value for numerical stability, calculating the sum of the exponentiated logits, and then normalizing by that sum.
+
+This meant we could reuse the reduction patterns we painstakingly wrote while building the LayerNorm kernel. Following is the CUDA C++ reference implementation, which involves a `blockReduceMax` followed by a `blockReduceSum`.
+
+<div className="w-5/6 m-auto">
+<CodeWindow title="CUDA C++ Kernel" language="cpp" code={`__global__ void
+softmax_fwd_kernel(float *__restrict__ probs,        // [B*T][Vp]
+                   const float *__restrict__ logits, // [B*T][Vp]
+                   int B, int T, int V, int Vp) {
+      int bt = blockIdx.x; // in [0..B*T)
+      int N = B * T;
+      if (bt >= N)
+        return;
+
+      const float *logits_bt = logits + bt * Vp;
+      float *probs_bt = probs + bt * Vp;
+
+      int tid = threadIdx.x;
+      int threads = blockDim.x;
+
+      // 1) find max over real vocab [0..V)
+      float local_max = -CUDART_INF_F;
+      for (int i = tid; i < V; i += threads) {
+        local_max = fmaxf(local_max, logits_bt[i]);
+      }
+      float maxval = blockReduceMax(local_max);
+      __syncthreads();
+
+      // 2) compute exp(logit - maxval) and partial sum
+      float local_sum = 0.0f;
+      for (int i = tid; i < V; i += threads) {
+        float e = expf(logits_bt[i] - maxval);
+        probs_bt[i] = e;
+        local_sum += e;
+      }
+      float sum = blockReduceSum(local_sum);
+      __syncthreads();
+
+      float inv_sum = (sum > 0.0f ? 1.0f / sum : 0.0f);
+
+      // 3) normalize the real-vocab probabilities
+      for (int i = tid; i < V; i += threads) {
+        probs_bt[i] *= inv_sum;
+      }
+      // 4) zero out the padded entries [V..Vp)
+      for (int i = V + tid; i < Vp; i += threads) {
+        probs_bt[i] = 0.0f;
+      }
+}
+
+void softmax_forward(float *probs, const float *logits, int B, int T, int V,
+                     int Vp, cudaStream_t stream = 0) {
+      int N = B * T;
+      int threads = std::min(1024, Vp);
+      int blocks = N;
+      softmax_fwd_kernel<<<blocks, threads, 0, stream>>>(probs, logits, B, T, V,
+                                                         Vp);
+      cudaErrorCheck();
+}`} />
+</div>
+
+This was smooth since we have done most of it before. The only part I didn't know was that 'expf' is not available in PTX, so I needed to use 'ex2' and apply a change of base.
 
 <App part={part5}/>
+
+Implementing this in PTX felt like a good test of the concepts we'd learned from the previous kernel. The host-side code to launch the kernel was, once again, a straightforward affair.
+
+<div className="w-5/6 m-auto">
+<CodeWindow title="C++ Runner" language="cpp" code={`void softmax_forward(float *probs, const float *logits, int B, int T, int V,
+                     int Vp, cudaStream_t stream = 0) {
+      static CUmodule module = nullptr;
+      static CUfunction kernel = nullptr;
+
+      if (module == nullptr) {
+        const char *ptx_path = "ptx/softmax_kernel.ptx";
+        cuCheck(cuModuleLoad(&module, ptx_path));
+        cuCheck(cuModuleGetFunction(&kernel, module, "softmax_fwd_kernel"));
+      }
+
+      void *args[] = {&probs, &logits, &B, &T, &V, &Vp};
+
+      cuCheck(cuLaunchKernel(kernel, B * T, 1,
+                             1, // Grid dimensions (x,y,z)
+                             std::min(1024, Vp), 1,
+                             1,         // Block dimensions (x,y,z)
+                             0,         // Shared memory size in bytes
+                             stream,    // Stream
+                             args,      // Kernel arguments
+                             nullptr)); // Extra options
+
+      cudaErrorCheck();
+}`} />
+</div>
+
+With the Softmax kernel complete, all the individual, vector-wise components of the GPT-2 model are now implemented in hand-written PTX. Now, only the heavyweights remain: the matrix multiplication kernels and the attention kernels that form the backbone of the transformer architecture. That's where the real performance gains (and potential for frustration) lie, and  we'll be tackling that next.
+
+<div className="flex justify-between mt-8 pt-4 border-t border-gray-700">
+  <a href="/blog/llm-ptx-04" className="text-blue-400 hover:text-blue-300 font-semibold">
+    ← Previous: The Layernorm Kernel
+  </a>
+  <a href="/blog/llm-ptx-06" className="text-blue-400 hover:text-blue-300 font-semibold">
+    Next: The Attention Kernel →
+  </a>
+</div>

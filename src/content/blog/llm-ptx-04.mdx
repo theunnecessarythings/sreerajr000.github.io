@@ -1,14 +1,153 @@
 ---
 id: 4
 featured: false
-date: "June 5, 2025"
+date: "June 26, 2025"
 title: "GPT2 From Scratch in PTX - Part IV (Layernorm Kernel)"
-summary: ""
-readTime: "00:07:53:60"
+summary: "Handwriting a Layernorm kernel in PTX. A deep dive into shared memory, parallel reductions, and multi-pass calculations in PTX."
+readTime: "00:09:15:80"
 imageUrl: "/images/llm-ptx-04.png"
 tags: ["PTX", "CUDA", "C++"]
 ---
 
 import {App, part4} from './llm-ptx.jsx'
+import {CodeWindow} from '../../components/ui.jsx'
+import RepoCard from "react-repo-card";
+
+<div className="w-[200px] m-auto my-4">
+  <RepoCard username="theunnecessarythings" repository="llm-ptx" />
+</div>
+
+So far, all the kernels have been relatively straightforward. Layer Normalization kernel is a major step up in complexity, as it's not a simple, one-pass operation like the previous ones. To normalize a layer's activations, you first need to calculate the mean, then the variance, and only then can you apply the normalization formula. Doing this efficiently on a GPU requires a deep understanding of parallel reduction algorithms and, crucially, the effective use of shared memory.
+
+This was the first kernel where we couldn't just think about a single thread's work in isolation. Threads within a block need to cooperate, sharing their partial results to calculate the final mean and variance. This is where `__shared__` memory comes in. 
+Following is the CUDA implementation of the Layer Normalization kernel.
+
+<div className="w-5/6 m-auto">
+<CodeWindow title="CUDA C++ Kernel" language="cpp" code={`__global__ void layernorm_fwd_kernel(float *out, const float *inp,
+                                     const float *weight, const float *bias,
+                                     int C, float eps) {
+    extern __shared__ float shared_buffer[];
+
+    int bt = blockIdx.x;
+    const float *x = inp + bt * C;
+    float *y = out + bt * C;
+
+    int tid = threadIdx.x;
+    int block_size = blockDim.x;
+
+    // --- Parallel Mean Calculation ---
+    float sum = 0.0f;
+    for (int i = tid; i < C; i += block_size) {
+      sum += x[i];
+    }
+    shared_buffer[tid] = sum;
+    __syncthreads();
+
+    // Reduction in shared memory
+    for (int stride = block_size / 2; stride > 0; stride >>= 1) {
+      if (tid < stride) {
+        shared_buffer[tid] += shared_buffer[tid + stride];
+      }
+      __syncthreads();
+    }
+    float mean = shared_buffer[0] / C;
+    __syncthreads(); // Ensure mean is visible to all
+
+    // --- Parallel Variance Calculation ---
+    sum = 0.0f;
+    for (int i = tid; i < C; i += block_size) {
+      float diff = x[i] - mean;
+      sum += diff * diff;
+    }
+    shared_buffer[tid] = sum;
+    __syncthreads();
+
+    // Reduction in shared memory
+    for (int stride = block_size / 2; stride > 0; stride >>= 1) {
+      if (tid < stride) {
+        shared_buffer[tid] += shared_buffer[tid + stride];
+      }
+      __syncthreads();
+    }
+    float var = shared_buffer[0] / C;
+    float rstd = rsqrtf(var + eps);
+
+    // --- Final Application ---
+    for (int i = tid; i < C; i += block_size) {
+      float n = (x[i] - mean) * rstd;
+      y[i] = n * weight[i] + bias[i];
+    }
+}
+
+void layernorm_forward(float *out, const float *inp, const float *weight,
+                       const float *bias, int B, int T, int C,
+                       cudaStream_t stream = 0) {
+    const float eps = 1e-5f;
+    int N = B * T;
+
+    int blocks = N;
+    // Threads must be a power of 2 for the reduction to work. 256 is good.
+    int threads = 1024;
+
+    // Shared memory for the reduction (one float per thread)
+    size_t shared_mem_size = threads * sizeof(float);
+
+    layernorm_fwd_kernel<<<blocks, threads, shared_mem_size, stream>>>(
+        out, inp, weight, bias, C, eps);
+
+    cudaErrorCheck();
+}`} />
+</div>
+
+
+Most of this can be translated with relative ease. When translating for loops, if the first loop condition check is guaranteed to be true, I've often simplified that case to be essentially a do-while loop. This simplifies the ptx writing a whole lot (at least for me) when writing loops. But this did bite me an the ass at some point. So you need to be very careful when making simplifying assumptions like that. It is extremely hard to debug logical errors like that, especially since we cannot debug step-by-step through PTX using a debugger. 
+
+Few new instructions that you will need is the `bar.sync 0` for `__syncthreads()`, `rqrt.approx` for `rqsrtf` and `shfl.sync.down` instructions for parallel reductions. 
+You can learn more about it from the PTX manual.
+
 
 <App part={part4}/>
+
+Translating this logic into PTX was a serious undertaking, just in terms of the sheer amount of things you need to keep in mind while writing it. And breaking it down like the above really helps. Managing shared memory pointers, ensuring correct synchronization with `bar.sync`, and structuring the reduction loops at such a low level was a huge learning curve. The host code, at least, was starting to look very familiar.
+
+<div className="w-5/6 m-auto">
+<CodeWindow title="C++ Runner" language="cpp" code={`void layernorm_forward(float *out, const float *inp, const float *weight,
+                       const float *bias, int B, int T, int C,
+                       cudaStream_t stream = 0) {
+    static CUmodule module = nullptr;
+    static CUfunction kernel = nullptr;
+
+    if (module == nullptr) {
+      const char *ptx_path = "ptx/layernorm_kernel.ptx";
+      cuCheck(cuModuleLoad(&module, ptx_path));
+      cuCheck(cuModuleGetFunction(&kernel, module, "layernorm_fwd_kernel"));
+    }
+    auto block_size = 32;
+    assert(block_size % 32 == 0);
+    assert(block_size <= 1024);
+    int N = B * T;
+
+    void *args[] = {&out, &inp, &weight, &bias, &N, &C};
+
+    cuCheck(cuLaunchKernel(kernel, N, 1,
+                           1,                // Grid dimensions (x,y,z)
+                           block_size, 1, 1, // Block dimensions (x,y,z)
+                           0,                // Shared memory size in bytes
+                           stream,           // Stream
+                           args,             // Kernel arguments
+                           nullptr));        // Extra options
+
+    cudaErrorCheck();
+}`} />
+</div>
+
+With Layer Normalization done, we now know most of the concepts needed for the remaining kernels. Therefore, they are starting to look conceptually straightforward, yet laborious in implementation. In the next part, we will be implementing the softmax kernel in PTX. See you there.  
+
+<div className="flex justify-between mt-8 pt-4 border-t border-gray-700">
+  <a href="/blog/llm-ptx-03" className="text-blue-400 hover:text-blue-300 font-semibold">
+    ← Previous: The Encoder Kernel
+  </a>
+  <a href="/blog/llm-ptx-05" className="text-blue-400 hover:text-blue-300 font-semibold">
+    Next: The Softmax Kernel →
+  </a>
+</div>

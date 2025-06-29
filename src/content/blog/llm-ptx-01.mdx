@@ -3,14 +3,95 @@ id: 1
 featured: true
 date: "June 5, 2025"
 title: "GPT2 From Scratch in PTX - Part I (Introduction)"
-summary: ""
+summary: "A deep dive into building a GPT-2 style transformer from scratch using raw CUDA C++ and PTX assembly. Part 1 covers the fundamental residual connection."
 readTime: "00:07:53:60"
 imageUrl: "/images/llm-ptx-01.png"
 tags: ["PTX", "CUDA", "C++"]
 ---
 
 import {App, part1} from './llm-ptx.jsx'
+import {CodeWindow} from '../../components/ui.jsx'
+import RepoCard from "react-repo-card";
+
+<div className="w-[200px] m-auto my-4">
+  <RepoCard username="theunnecessarythings" repository="llm-ptx" />
+</div>
+
+I've been interested in exploring low-level machine learning programming for some time. I considered CUDA since I had written a kernel or two when I took that high-performance computing course in college. But, I wanted to go deeper. That led me to a new project idea: what if I tried to implement Karpathy's `llm.c` from scratch in PTX, NVIDIA's assembly language?
+
+So I did.
+
+Whenever I am tackling a new problem, two things that I always do are 1) deconstruct and 2) simplify (weapons-grade autism also helps). In this case, deconstruction is kind of straightforward, approaching the architecture one kernel at a time, and translating the CUDA code one line at a time, seem reasonable.
+
+Now simplification, the `llm.c` repo contains optimized implementations for both training and inference, including custom-written CUDA kernels as well as implementations using CUBLAS and CUDNN. So we have a reasonable candidate, the custom-written CUDA kernels since CUBLAS kernels are closed source anyway. And at least for now, I am not looking forward to training my models, I decided to carve out a version of just the GPT-2 inference code using the custom CUDA kernels.
+
+Now, the real challenge begins: handwriting the PTX kernels. Let's be real, I have absolutely zero experience writing PTX kernels. And weirdly enough I don't have any experience writing normal assembly either (This might sound even weirder considering, I do have a Bachelor's and Master's degree in Computer Engineering and, a PhD too but you know how pointless that is. The reasons for which if I try to explain you would want to punch someone in the Indian Elite Higher Education System)
 
 
+So throughout this process, my main crutches were the official NVIDIA PTX manual and a very unreliable (borderline gaslighting) ChatGPT and Gemini, which, thanks to the scarcity of documented PTX examples online, often led me down some bizarre rabbit holes (I mean come on, I need someone to teach the LLMs to say "I don't know"). I also looked at a lot of compiler-generated PTX too (whew!!).
+
+Without further ado, let's start. I figured I start with the easiest kernel out of all, the residual kernel since it is essentially a vector add. For reference, here is the CUDA implementation from `llm.c`. I am assuming you know some CUDA and its programming model if you are already here. Otherwise, welp come back when you do so (the PMPP book I've heard is good, one of these days I ought to finish it).
+
+<div className="w-5/6 m-auto">
+<CodeWindow title="Residual Kernel" language="cpp" code={`__global__ void residual_fwd_kernel(float *__restrict__ out,
+                                    const float *__restrict__ inp1,
+                                    const float *__restrict__ inp2, int N) {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i >= N)
+      return;
+    out[i] = inp1[i] + inp2[i];
+}
+
+void residual_forward(float *out, const float *inp1, const float *inp2, int N,
+                      cudaStream_t stream = 0) {
+    const int THREADS_PER_BLOCK = 1024;
+    int blocks = (N + THREADS_PER_BLOCK - 1) / THREADS_PER_BLOCK;
+    residual_fwd_kernel<<<blocks, THREADS_PER_BLOCK, 0, stream>>>(out, inp1, inp2,
+                                                                  N);
+    cudaErrorCheck();
+}`} />
+</div>
+
+
+Okay, now that we have our kernel, we can start writing it in PTX. For all the kernels I've provided the line-by-line breakdown from CUDA to PTX as to how I proceed side by side. You'd be surprised as to how few instructions you need to know to write entire kernels.
 
 <App part={part1}/>
+
+After dissecting the CUDA version and painstakingly crafting the PTX equivalent, the final piece of the puzzle was calling my new PTX kernel from the host C++ code. This requires a bit of boilerplate to load the compiled PTX module and launch the kernel, but once you do it for one kernel the rest of them are the same.
+
+<div className="w-5/6 m-auto">
+<CodeWindow title="C++ Runner" language="cpp" code={`void residual_forward(float *out, const float *inp1, const float *inp2, int N,
+                      cudaStream_t stream = 0) {
+    static CUmodule module = nullptr;
+    static CUfunction kernel = nullptr;
+
+    if (module == nullptr) {
+        const char *ptx_path = "ptx/residual_kernel.ptx";
+        cuCheck(cuModuleLoad(&module, ptx_path));
+        cuCheck(cuModuleGetFunction(&kernel, module, "residual_fwd_kernel"));
+    }
+
+    int blocks_per_grid = (N + THREADS_PER_BLOCK - 1) / THREADS_PER_BLOCK;
+    void *args[] = {&out, &inp1, &inp2, &N};
+
+    cuCheck(cuLaunchKernel(kernel, blocks_per_grid, 1,
+                           1,                       // Grid dimensions (x,y,z)
+                           THREADS_PER_BLOCK, 1, 1, // Block dimensions (x,y,z)
+                           0,                       // Shared memory size in bytes
+                           stream,                  // Stream
+                           args,                    // Kernel arguments
+                           nullptr));               // Extra options
+
+    cudaErrorCheck();
+}`} />
+</div>
+
+
+And that's it, our first kernel is done. It might seem like a small piece of the puzzle, but getting this residual connection working—from the initial CUDA C++ reference to the hand-written PTX and the host code to launch it—felt like a huge milestone and felt much more confident in writing the rest of the kernels that are much larger and complex. 
+
+In the next post, we will see how to translate a GELU kernel. See you there, or not.
+<div className="flex justify-end mt-8 pt-4 border-t border-gray-700">
+  <a href="/blog/llm-ptx-02" className="text-blue-400 hover:text-blue-300 font-semibold">
+    Next: The GELU Kernel →
+  </a>
+</div>

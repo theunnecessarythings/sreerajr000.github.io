@@ -54,7 +54,7 @@ export const PublicationsPage = ({ animationsReady }) => {
                           src={pub.image}
                           alt={pub.title}
                           className="
-      h-full w-auto object-contain object-center
+      h-full m-auto w-full  object-center
       transition-opacity duration-300 ease-in-out
       opacity-80 group-hover:opacity-100
     "
@@ -123,10 +123,9 @@ export const PublicationDetailPage = ({ animationsReady }) => {
           >
             Back to publications
           </Button>
-
           {publication.image && (
             <motion.div
-              className="my-8 aspect-[16/9] rounded-lg overflow-hidden border border-gray-800 group"
+              className="my-8 overflow-hidden group h-128 flex justify-center items-center"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
@@ -134,11 +133,10 @@ export const PublicationDetailPage = ({ animationsReady }) => {
               <img
                 src={publication.image}
                 alt={publication.title}
-                className="w-full h-full object-cover transition-all duration-300 ease-in-out group-hover:scale-105 opacity-80 group-hover:opacity-100"
+                className="rounded-lg object-contain max-h-full max-w-full transition-all duration-300 ease-in-out group-hover:scale-105 opacity-80 group-hover:opacity-100"
               />
             </motion.div>
-          )}
-
+          )}{" "}
           <motion.h1
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -158,7 +156,6 @@ export const PublicationDetailPage = ({ animationsReady }) => {
               {publication.venue}, {publication.publisher}
             </p>
           </motion.div>
-
           <motion.h2
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -173,9 +170,8 @@ export const PublicationDetailPage = ({ animationsReady }) => {
             transition={{ delay: 0.6 }}
             className="publication-content font-sans text-gray-300 text-lg leading-relaxed whitespace-pre-wrap"
           >
-            {publication.abstract}
+            <p>{publication.abstract}</p>
           </motion.div>
-
           {publication.citation && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -205,7 +201,6 @@ export const PublicationDetailPage = ({ animationsReady }) => {
               </p>
             </motion.div>
           )}
-
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}

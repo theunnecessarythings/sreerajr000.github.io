@@ -220,7 +220,7 @@ export const BlogPage = ({ animationsReady }) => {
         {featuredPosts.map((featuredPost) => (
           <motion.div
             key={featuredPost.slug}
-            className="h-[400px] bg-gray-800/20 border border-gray-700/50 p-6 md:p-8 flex flex-col group relative overflow-hidden"
+            className="h-[400px] m-4 bg-gray-800/20 border border-gray-700/50 p-6 md:p-8 flex flex-col group relative overflow-hidden"
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.5, delay: 0.2 }}

@@ -1,14 +1,148 @@
 ---
 id: 6
 featured: false
-date: "June 5, 2025"
+date: "July 10, 2025"
 title: "GPT2 From Scratch in PTX - Part VI (Attention Kernel)"
-summary: ""
-readTime: "00:07:53:60"
+summary: "The heart of the transformer. This post documents the journey of handwriting the multi-headed, causal self-attention kernel in PTX, bringing all the previous concepts together."
+readTime: "00:10:20:50"
 imageUrl: "/images/llm-ptx-06.png"
 tags: ["PTX", "CUDA", "C++"]
 ---
 
 import {App, part6} from './llm-ptx.jsx'
+import {CodeWindow} from '../../components/ui.jsx'
+import RepoCard from "react-repo-card";
+
+<div className="w-[200px] m-auto my-4">
+  <RepoCard username="theunnecessarythings" repository="llm-ptx" />
+</div>
+
+This is the big one. The attention mechanism is what makes a transformer a transformer. After working my way through the simpler, element-wise kernels and the more complex reduction-based ones, it was time to face the heart of the model. The attention kernel is a multi-stage one. It involves calculating query-key dot products, applying a causal mask so tokens can't see into the future, running a softmax over the results, and finally, using those attention scores to create a weighted sum of the value vectors.
+
+The CUDA C++ reference we have for this doesn't use shared memory. Instead, it orchestrates a complex dance where each thread block handles a single attention head for a single batch item, and each thread within that block is responsible for a single query token. This kernel is less about inter-thread communication and more about careful pointer arithmetic and managing the multiple stages of the calculation.
+
+<div className="w-5/6 m-auto">
+<CodeWindow title="CUDA C++ Kernel" language="cpp" code={`__global__ void attention_fwd_kernel(float *out, float *preatt, float *att,
+                                     const float *inp, int B, int T, int C,
+                                     int NH) {
+    // Each thread block is for one head and one batch item: grid(NH, B)
+    // Each thread is for one query token: block(T)
+    int h = blockIdx.x;
+    int b = blockIdx.y;
+    int t = threadIdx.x;
+
+    if (b >= B || h >= NH || t >= T)
+      return;
+
+    int C3 = C * 3;
+    int hs = C / NH; // head size
+    float scale = 1.0f / sqrtf((float)hs);
+
+    // Pointer to the input for this batch item
+    const float *inp_b = inp + b * T * C3;
+    // Pointer to the query vector for this thread (b, t, h)
+    const float *query_t = inp_b + t * C3 + h * hs;
+
+    // Pointers to the output attention scores for this thread's row
+    float *preatt_bth = preatt + (b * NH * T * T) + (h * T * T) + (t * T);
+    float *att_bth = att + (b * NH * T * T) + (h * T * T) + (t * T);
+
+    // --- Pass 1: Calculate Q.K^T and find maxval (causal attention) ---
+    float maxval = -10000.0f;
+    for (int t2 = 0; t2 <= t; t2++) {
+      const float *key_t2 = inp_b + t2 * C3 + h * hs + C; // +C offset for key
+      float val = 0.0f;
+      for (int i = 0; i < hs; i++) {
+        val += query_t[i] * key_t2[i];
+      }
+      val *= scale;
+      if (val > maxval) {
+        maxval = val;
+      }
+      preatt_bth[t2] = val;
+    }
+
+    // --- Pass 2: Calculate exponentials and sum for the softmax denominator
+    float expsum = 0.0f;
+    for (int t2 = 0; t2 <= t; t2++) {
+      float expv = expf(preatt_bth[t2] - maxval);
+      expsum += expv;
+      att_bth[t2] = expv; // Store the numerator temporarily
+    }
+    float expsum_inv = expsum == 0.0f ? 0.0f : 1.0f / expsum;
+
+    // --- Pass 3: Normalize to get final softmax scores ---
+    for (int t2 = 0; t2 <= t; t2++) {
+      att_bth[t2] *= expsum_inv;
+    }
+    for (int t2 = t + 1; t2 < T; t2++) {
+      att_bth[t2] = 0.0f;
+    }
+
+    // --- Pass 4: Accumulate weighted values into the output ---
+    float *out_bth = out + (b * T * C) + (t * C) + (h * hs);
+    for (int i = 0; i < hs; i++) {
+      out_bth[i] = 0.0f;
+    }
+    for (int t2 = 0; t2 <= t; t2++) {
+      const float *value_t2 =
+          inp_b + t2 * C3 + h * hs + C * 2; // +2C offset for value
+      float att_score = att_bth[t2];
+      for (int i = 0; i < hs; i++) {
+        out_bth[i] += att_score * value_t2[i];
+      }
+    }
+}
+
+void attention_forward(float *out, float *preatt, float *att, const float *inp,
+                       int B, int T, int C, int NH, cudaStream_t stream = 0) {
+    dim3 grid(NH, B);
+    dim3 block(T);
+    attention_fwd_kernel<<<grid, block, 0, stream>>>(out, preatt, att, inp, B, T,
+                                                     C, NH);
+    cudaErrorCheck();
+}`} />
+</div>
+
+By now, you should be familiar with every single concept that's being used above. Handwriting this code says more about your willpower (those damn registers!) than it does about having any deep knowledge of PTX beyond what we've covered so far.
 
 <App part={part6}/>
+
+Getting this logic into PTX was a true test of everything I'd learned. It combined the memory access patterns from the encoder, the mathematical operations from GELU, and the normalization logic from Softmax, all within a more complex loop structure. The C++ host code to launch it, however, as always the same.
+
+<div className="w-5/6 m-auto">
+<CodeWindow title="C++ Runner" language="cpp" code={`void attention_forward(float *out, float *preatt, float *att, const float *inp,
+                       int B, int T, int C, int NH, cudaStream_t stream = 0) {
+    static CUmodule module = nullptr;
+    static CUfunction kernel = nullptr;
+
+    if (module == nullptr) {
+      const char *ptx_path = "ptx/attention_kernel.ptx";
+      cuCheck(cuModuleLoad(&module, ptx_path));
+      cuCheck(cuModuleGetFunction(&kernel, module, "attention_fwd_kernel"));
+    }
+
+    void *args[] = {&out, &preatt, &att, &inp, &B, &T, &C, &NH};
+
+    cuCheck(cuLaunchKernel(kernel, NH, B,
+                           1,         // Grid dimensions (x,y,z)
+                           T, 1, 1,   // Block dimensions (x,y,z)
+                           0,         // Shared memory size in bytes
+                           stream,    // Stream
+                           args,      // Kernel arguments
+                           nullptr)); // Extra options
+
+    cudaErrorCheck();
+}`} />
+</div>
+
+With the attention mechanism in place, only one major component is left: the feed-forward network, which is essentially a pair of large matrix multiplications. It's time to face the final boss: writing a performant GEMM (General Matrix-Matrix Multiplication) kernel in PTX.
+
+<div className="flex justify-between mt-8 pt-4 border-t border-gray-700">
+  <a href="/blog/llm-ptx-05" className="text-blue-400 hover:text-blue-300 font-semibold">
+    ← Previous: The Softmax Kernel
+  </a>
+  <a href="/blog/llm-ptx-07" className="text-blue-400 hover:text-blue-300 font-semibold">
+    Next: The Matmul Kernel →
+  </a>
+</div>
