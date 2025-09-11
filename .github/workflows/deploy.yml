@@ -65,7 +65,8 @@ jobs:
         run: |
           mkdir -p dist/language
           rsync -a sites/sr-lang-docs/dist/ dist/language/
-          # React SPA fallback for GitHub Pages routes:
+          touch dist/.nojekyll
+          # React SPA fallback (keep this after confirming /language works)
           cp dist/index.html dist/404.html || true
 
       - name: Setup Pages
