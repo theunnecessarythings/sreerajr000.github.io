@@ -24,35 +24,41 @@ jobs:
         with:
           fetch-depth: 0
 
-      # repo2 (Astro) -> ./sites/sr-lang-docs
-      # If repo2 becomes PRIVATE, add a PAT in repo1 secrets as REPO2_TOKEN and uncomment token:
+      # repo2 (Astro with Bun) -> ./sites/sr-lang-docs
       - name: Checkout repo2 (Astro)
         uses: actions/checkout@v4
         with:
           repository: theunnecessarythings/sr-lang-docs
           ref: main
           path: sites/sr-lang-docs
-          # token: ${{ secrets.REPO2_TOKEN }}
+          # token: ${{ secrets.REPO2_TOKEN }}  # only if repo2 is private
 
+      # Node for repo1 (npm)
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: "npm"
 
-      # Build repo1
+      # Build repo1 (npm)
       - name: Install dependencies (repo1)
         run: npm ci
       - name: Build (repo1)
-        run: npm run build   # outputs ./dist
+        run: npm run build   # -> ./dist
 
-      # Build repo2
+      # Bun for repo2
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      # Build repo2 (Bun)
       - name: Install dependencies (repo2)
         working-directory: sites/sr-lang-docs
-        run: npm ci
+        run: bun install
       - name: Build (repo2)
         working-directory: sites/sr-lang-docs
-        run: npm run build   # outputs ./sites/sr-lang-docs/dist
+        run: bun run build   # -> ./sites/sr-lang-docs/dist
 
       # Merge Astro build at /language
       - name: Merge outputs
