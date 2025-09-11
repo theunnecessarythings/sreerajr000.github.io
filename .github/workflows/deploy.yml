@@ -3,7 +3,6 @@ name: Deploy static content to Pages
 on:
   push:
     branches: ["main"]
-
   workflow_dispatch:
 
 permissions:
@@ -13,25 +12,59 @@ permissions:
 
 concurrency:
   group: "pages"
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      # repo1 (React + Vite)
+      - name: Checkout repo1
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # repo2 (Astro) -> ./sites/sr-lang-docs
+      # If repo2 becomes PRIVATE, add a PAT in repo1 secrets as REPO2_TOKEN and uncomment token:
+      - name: Checkout repo2 (Astro)
+        uses: actions/checkout@v4
+        with:
+          repository: theunnecessarythings/sr-lang-docs
+          ref: main
+          path: sites/sr-lang-docs
+          # token: ${{ secrets.REPO2_TOKEN }}
+
       - name: Set up Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: "npm"
-      - name: Install dependencies
+
+      # Build repo1
+      - name: Install dependencies (repo1)
         run: npm ci
-      - name: Build
-        run: npm run build
+      - name: Build (repo1)
+        run: npm run build   # outputs ./dist
+
+      # Build repo2
+      - name: Install dependencies (repo2)
+        working-directory: sites/sr-lang-docs
+        run: npm ci
+      - name: Build (repo2)
+        working-directory: sites/sr-lang-docs
+        run: npm run build   # outputs ./sites/sr-lang-docs/dist
+
+      # Merge Astro build at /language
+      - name: Merge outputs
+        run: |
+          mkdir -p dist/language
+          rsync -a sites/sr-lang-docs/dist/ dist/language/
+          # React SPA fallback for GitHub Pages routes:
+          cp dist/index.html dist/404.html || true
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
