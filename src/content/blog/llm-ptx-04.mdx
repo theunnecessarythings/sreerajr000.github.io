@@ -13,7 +13,7 @@ import {App, part4} from './llm-ptx.jsx'
 import {CodeWindow} from '../../components/ui.jsx'
 import RepoCard from "react-repo-card";
 
-<div className="w-[200px] m-auto my-4">
+<div className="blog-repo-card">
   <RepoCard username="theunnecessarythings" repository="llm-ptx" />
 </div>
 
@@ -22,7 +22,7 @@ So far, all the kernels have been relatively straightforward. Layer Normalizatio
 This was the first kernel where we couldn't just think about a single thread's work in isolation. Threads within a block need to cooperate, sharing their partial results to calculate the final mean and variance. This is where `__shared__` memory comes in. 
 Following is the CUDA implementation of the Layer Normalization kernel.
 
-<div className="w-5/6 m-auto">
+<div className="blog-code-wrap">
 <CodeWindow title="CUDA C++ Kernel" language="cpp" code={`__global__ void layernorm_fwd_kernel(float *out, const float *inp,
                                      const float *weight, const float *bias,
                                      int C, float eps) {
@@ -110,7 +110,7 @@ You can learn more about it from the PTX manual.
 
 Translating this logic into PTX was a serious undertaking, just in terms of the sheer amount of things you need to keep in mind while writing it. And breaking it down like the above really helps. Managing shared memory pointers, ensuring correct synchronization with `bar.sync`, and structuring the reduction loops at such a low level was a huge learning curve. The host code, at least, was starting to look very familiar.
 
-<div className="w-5/6 m-auto">
+<div className="blog-code-wrap">
 <CodeWindow title="C++ Runner" language="cpp" code={`void layernorm_forward(float *out, const float *inp, const float *weight,
                        const float *bias, int B, int T, int C,
                        cudaStream_t stream = 0) {
@@ -143,7 +143,7 @@ Translating this logic into PTX was a serious undertaking, just in terms of the 
 
 With Layer Normalization done, we now know most of the concepts needed for the remaining kernels. Therefore, they are starting to look conceptually straightforward, yet laborious in implementation. In the next part, we will be implementing the softmax kernel in PTX. See you there.  
 
-<div className="flex justify-between mt-8 pt-4 border-t border-gray-700">
+<div className="blog-post-nav">
   <a href="/blog/llm-ptx-03" className="text-blue-400 hover:text-blue-300 font-semibold">
     ← Previous: The Encoder Kernel
   </a>

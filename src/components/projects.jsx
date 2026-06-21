@@ -1,44 +1,63 @@
-import React, { useState, useEffect } from "react";
-import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import React, { useEffect, useState } from "react";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, ExternalLink } from "lucide-react";
+import { ArrowLeft, ArrowRight, CalendarDays, ExternalLink } from "lucide-react";
 import { Button } from "./button";
-import { DecoderText } from "./decoder_text";
 import { Comments } from "./comments";
+import { formatDate, getAllTags, projectsData } from "../content_data";
 
-const posts = import.meta.glob("/src/content/projects/*.mdx", { eager: true });
+const MotionArticle = motion.article;
+const MotionDiv = motion.div;
+const MotionHeader = motion.header;
 
-const projectsData = Object.keys(posts)
-  .map((file) => {
-    const slug = file.split("/").pop().replace(".mdx", "");
-    const post = posts[file];
-    return {
-      slug,
-      ...post.frontmatter,
-      Content: post.default,
-    };
-  })
-  .sort((a, b) => new Date(b.date) - new Date(a.date));
-
-const tagColorMap = {
-  React: "bg-cyan-500/20 text-cyan-300",
-  "D3.js": "bg-orange-500/20 text-orange-300",
-  Python: "bg-blue-500/20 text-blue-300",
-  "Next.js": "bg-gray-400/20 text-gray-200",
-  Solidity: "bg-purple-500/20 text-purple-300",
-  IPFS: "bg-teal-500/20 text-teal-300",
-  WebSockets: "bg-red-500/20 text-red-300",
-  "Monaco Editor": "bg-indigo-500/20 text-indigo-300",
-  WebRTC: "bg-green-500/20 text-green-300",
+const fade = {
+  initial: { opacity: 0, y: 22 },
+  animate: { opacity: 1, y: 0 },
 };
-const getTagColor = (tag) => tagColorMap[tag] || "bg-gray-700 text-gray-300";
 
-export const ProjectsPage = ({ animationsReady }) => {
+const getAdjacentProject = (project, offset) => {
+  const index = projectsData.findIndex((item) => item.slug === project.slug);
+  if (index === -1) return null;
+  return projectsData[index + offset] || null;
+};
+
+const ProjectCard = ({ project, index, delay = 0 }) => (
+  <MotionArticle
+    {...fade}
+    transition={{ duration: 0.5, delay, ease: [0.22, 1, 0.36, 1] }}
+    className={`project-card ${project.featured ? "project-card-featured" : ""}`}
+  >
+    <Link to={`/projects/${project.slug}`} className="project-card-link">
+      {project.imageUrl && (
+        <div className="project-card-media">
+          <img src={project.imageUrl} alt={project.title} />
+        </div>
+      )}
+      <div className="project-card-body">
+        <div className="project-card-meta">
+          <span>{String(index + 1).padStart(2, "0")}</span>
+          {project.featured && <span>Featured</span>}
+          {project.date && <span>{formatDate(project.date)}</span>}
+        </div>
+        <h2>{project.title}</h2>
+        <p>{project.summary}</p>
+        <div className="mt-4 flex flex-wrap gap-2">
+          {(project.tags || []).map((tag) => (
+            <span key={tag} className="chip">
+              {tag}
+            </span>
+          ))}
+        </div>
+      </div>
+      <ArrowRight className="project-card-arrow" aria-hidden="true" />
+    </Link>
+  </MotionArticle>
+);
+
+export const ProjectsPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedTag, setSelectedTag] = useState(searchParams.get("tag"));
-  const featuredProject = projectsData.find((p) => p.featured);
-  const otherProjects = projectsData;
-  const navigate = useNavigate();
+  const allTags = getAllTags(projectsData);
 
   useEffect(() => {
     setSelectedTag(searchParams.get("tag"));
@@ -46,89 +65,57 @@ export const ProjectsPage = ({ animationsReady }) => {
 
   const handleTagSelect = (tag) => {
     setSelectedTag(tag);
-    if (tag) {
-      setSearchParams({ tag: tag });
-    } else {
-      setSearchParams({});
-    }
+    if (tag) setSearchParams({ tag });
+    else setSearchParams({});
   };
 
-  const allTags = [...new Set(otherProjects.flatMap((p) => p.tags || []))];
-
   const filteredProjects = selectedTag
-    ? otherProjects.filter((p) => p.tags && p.tags.includes(selectedTag))
-    : otherProjects;
+    ? projectsData.filter((project) => project.tags?.includes(selectedTag))
+    : projectsData;
+  const featuredProjects = projectsData.filter((project) => project.featured);
 
   return (
-    <main className="flex-1 m-4 p-4 sm:m-6 sm:p-6 md:m-12 md:p-12">
-      <div className="max-w-7xl mx-auto">
-        <motion.h2
-          className="layered-title font-display text-4xl md:text-5xl font-bold text-white mb-8 py-4"
-          data-text="Projects"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.1 }}
-        >
-          <DecoderText text="Projects" start={animationsReady} />
-        </motion.h2>
+    <main className="page-shell">
+      <MotionDiv
+        {...fade}
+        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+        className="project-hero"
+      >
+        <div>
+          <p className="eyebrow mb-4">Projects</p>
+          <h1 className="page-title">Tools, systems, and experiments</h1>
+          <p className="muted mt-5 max-w-2xl leading-7">
+            Systems experiments, ML tooling, creative software, and projects that
+            became useful after starting out unnecessary.
+          </p>
+        </div>
+        <div className="project-hero-count">
+          <strong>{projectsData.length}</strong>
+          <span>projects</span>
+        </div>
+      </MotionDiv>
 
-        {featuredProject && (
-          <motion.div
-            className="group list-item-hover-effect -m-4 p-4 mb-12 cursor-pointer border-2 border-gray-800"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.2, ease: "easeOut" }}
-            onClick={() => navigate(`/projects/${featuredProject.slug}`)}
-          >
-            <div className="absolute inset-0 z-0 opacity-20 group-hover:opacity-40 transition-opacity duration-500">
-              <div
-                className="absolute inset-0 bg-[length:auto_100%] bg-center transition-opacity duration-500"
-                style={{ backgroundImage: `url(${featuredProject.imageUrl})` }}
-              />
-            </div>
-            <div className="relative p-8 bg-black/20">
-              <p className="font-body text-sm font-bold text-yellow-400 mb-4">
-                Featured Project
-              </p>
-              <h3 className="font-display text-4xl md:text-5xl text-white font-bold">
-                {featuredProject.title}
-              </h3>
-              <p className="font-body text-gray-300 mt-4 max-w-2xl">
-                {featuredProject.summary}
-              </p>
-              <div className="flex flex-wrap gap-2 mt-4">
-                {featuredProject.tags.map((t) => (
-                  <button
-                    key={t}
-                    className={`text-sm px-3 py-1 rounded-full transition-colors ${getTagColor(
-                      t,
-                    )} hover:opacity-80`}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleTagSelect(t);
-                    }}
-                  >
-                    {t}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </motion.div>
-        )}
+      <div className="project-overview">
+        <div>
+          <span>Featured</span>
+          <strong>{featuredProjects.length} active highlights</strong>
+        </div>
+        <div>
+          <span>Focus</span>
+          <strong>GPU systems, Zig, Rust, Blender tools</strong>
+        </div>
+        <div>
+          <span>Topics</span>
+          <strong>{allTags.length} tags</strong>
+        </div>
+      </div>
 
-        <motion.div
-          className="flex flex-wrap gap-2 mb-10"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.3 }}
-        >
+      <div className="project-filter-bar">
+        <span className="machine-label">Topics</span>
+        <div className="flex flex-wrap gap-2">
           <button
             onClick={() => handleTagSelect(null)}
-            className={`px-4 py-2 text-sm rounded-full transition-colors ${
-              selectedTag === null
-                ? "bg-cyan-400 text-gray-900 font-bold"
-                : "bg-gray-800 text-gray-300 hover:bg-gray-700"
-            }`}
+            className={`chip ${selectedTag === null ? "chip-active" : ""}`}
           >
             All
           </button>
@@ -136,173 +123,130 @@ export const ProjectsPage = ({ animationsReady }) => {
             <button
               key={tag}
               onClick={() => handleTagSelect(tag)}
-              className={`px-4 py-2 text-sm rounded-full transition-colors ${
-                selectedTag === tag
-                  ? "bg-cyan-400 text-gray-900 font-bold"
-                  : "bg-gray-800 text-gray-300 hover:bg-gray-700"
-              }`}
+              className={`chip ${selectedTag === tag ? "chip-active" : ""}`}
             >
               {tag}
             </button>
           ))}
-        </motion.div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-          {filteredProjects.map((project, index) => (
-            <motion.div
-              key={project.slug}
-              className="group list-item-hover-effect -m-1 p-4 cursor-pointer border border-gray-800"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{
-                duration: 0.6,
-                delay: 0.4 + index * 0.1,
-                ease: "easeOut",
-              }}
-              onClick={() => navigate(`/projects/${project.slug}`)}
-            >
-              {project.imageUrl && (
-                <div className="relative aspect-video mb-4 rounded-lg overflow-hidden border border-gray-800">
-                  <img
-                    src={project.imageUrl}
-                    alt={project.title}
-                    className="w-full h-full object-cover transition-all duration-300 ease-in-out group-hover:scale-105 opacity-80 group-hover:opacity-100"
-                  />
-                </div>
-              )}
-              <div className="relative">
-                <h3 className="font-display text-2xl text-white font-bold">
-                  {project.title}
-                </h3>
-                <p className="font-body text-gray-400 mt-2 text-sm">
-                  {project.summary}
-                </p>
-                <div className="flex flex-wrap gap-2 mt-4">
-                  {project.tags.map((t) => (
-                    <button
-                      key={t}
-                      className={`text-xs px-2 py-1 rounded-full transition-colors ${getTagColor(
-                        t,
-                      )} hover:opacity-80`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleTagSelect(t);
-                      }}
-                    >
-                      {t}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </motion.div>
-          ))}
         </div>
+      </div>
+
+      <div className="project-grid">
+        {filteredProjects.map((project, index) => (
+          <ProjectCard
+            key={project.slug}
+            project={project}
+            index={index}
+            delay={index * 0.055}
+          />
+        ))}
       </div>
     </main>
   );
 };
 
-export const ProjectDetailPage = ({ animationsReady }) => {
+export const ProjectDetailPage = () => {
   const { slug } = useParams();
   const navigate = useNavigate();
-  const project = projectsData.find((p) => p.slug === slug);
+  const project = projectsData.find((item) => item.slug === slug);
 
   if (!project) {
     return (
-      <main className="flex-1 p-12 text-center">
-        <h1 className="text-4xl font-bold">Project not found</h1>
-        <Button
-          onClick={() => navigate("/projects")}
-          secondary
-          icon={<ArrowLeft />}
-          className="mt-8"
-        >
-          Back to projects
-        </Button>
+      <main className="page-shell page-shell-narrow text-center">
+        <h1 className="page-title">Project not found</h1>
+        <div className="mt-8">
+          <Button onClick={() => navigate("/projects")} secondary icon={<ArrowLeft />}>
+            Back to projects
+          </Button>
+        </div>
       </main>
     );
   }
+
   const { Content } = project;
+  const previousProject = getAdjacentProject(project, 1);
+  const nextProject = getAdjacentProject(project, -1);
+
   return (
-    <main className="flex-1 p-4 sm:p-6 md:p-12">
-      <div className="max-w-7xl mx-auto">
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.5 }}
-        >
-          <Button
-            onClick={() => {
-              navigate(-1);
-            }}
-            secondary
-            icon={<ArrowLeft />}
-          >
-            Back
-          </Button>
-          {project.imageUrl && (
-            <motion.div
-              className="my-8 aspect-[16/9] rounded-lg overflow-hidden border border-gray-800 group"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-            >
-              <img
-                src={project.imageUrl}
-                alt={project.title}
-                className="w-full h-full object-cover transition-all duration-300 ease-in-out group-hover:scale-105 opacity-80 group-hover:opacity-100"
-              />
-            </motion.div>
+    <main className="page-shell project-detail-shell">
+      <Button onClick={() => navigate(-1)} secondary icon={<ArrowLeft />}>
+        Back
+      </Button>
+      <MotionHeader
+        {...fade}
+        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+        className="project-detail-header"
+      >
+        <div className="project-detail-meta">
+          {project.featured && <span>Featured</span>}
+          {project.date && (
+            <span>
+              <CalendarDays aria-hidden="true" />
+              {formatDate(project.date)}
+            </span>
           )}
-          <motion.h1
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="font-display text-4xl md:text-5xl font-bold text-white my-8"
-          >
-            {project.title}
-          </motion.h1>
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="flex flex-wrap gap-2 mb-8"
-          >
-            {project.tags.map((t) => (
-              <button
-                key={t}
-                className={`text-sm px-3 py-1 rounded-full transition-colors ${getTagColor(
-                  t,
-                )} hover:opacity-80`}
-                onClick={() => navigate(`/projects?tag=${t}`)}
-              >
-                {t}
-              </button>
-            ))}
-          </motion.div>
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-            className="project-content font-body text-lg text-gray-300 leading-relaxed"
-          >
-            <Content />
-          </motion.div>
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 }}
-            className="mt-12"
-          >
-            {project.url && (
-              <Button href={project.url} iconEnd={<ExternalLink />}>
-                View Project
-              </Button>
-            )}
-          </motion.div>
-          <Comments />
-        </motion.div>
-      </div>
+        </div>
+        <h1 className="page-title">{project.title}</h1>
+        <p className="muted mt-5 leading-7">{project.summary}</p>
+        <div className="mt-5 flex flex-wrap gap-2">
+          {(project.tags || []).map((tag) => (
+            <button
+              key={tag}
+              onClick={() => navigate(`/projects?tag=${tag}`)}
+              className="chip"
+            >
+              {tag}
+            </button>
+          ))}
+        </div>
+      </MotionHeader>
+
+      {project.imageUrl && (
+        <MotionDiv
+          {...fade}
+          transition={{ duration: 0.5, delay: 0.08, ease: [0.22, 1, 0.36, 1] }}
+          className="project-detail-media"
+        >
+          <img
+            src={project.imageUrl}
+            alt={project.title}
+          />
+        </MotionDiv>
+      )}
+
+      <MotionArticle
+        {...fade}
+        transition={{ duration: 0.5, delay: 0.12, ease: [0.22, 1, 0.36, 1] }}
+        className="project-content prose-content"
+      >
+        <Content />
+      </MotionArticle>
+
+      {project.url && (
+        <div className="mt-10">
+          <Button href={project.url} iconEnd={<ExternalLink />}>
+            View Project
+          </Button>
+        </div>
+      )}
+
+      {(previousProject || nextProject) && (
+        <nav className="project-more" aria-label="Project navigation">
+          {previousProject && (
+            <Link to={`/projects/${previousProject.slug}`}>
+              <span>Previous</span>
+              <strong>{previousProject.title}</strong>
+            </Link>
+          )}
+          {nextProject && (
+            <Link to={`/projects/${nextProject.slug}`}>
+              <span>Next</span>
+              <strong>{nextProject.title}</strong>
+            </Link>
+          )}
+        </nav>
+      )}
+      <Comments />
     </main>
   );
 };

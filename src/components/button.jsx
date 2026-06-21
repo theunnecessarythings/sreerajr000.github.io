@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 
 // --- CUSTOM BUTTON COMPONENT ---
 export const Button = React.forwardRef(
-  ({ to, href, secondary, children, icon, iconEnd, ...rest }, ref) => {
+  ({ to, href, secondary, children, icon, iconEnd, className, ...rest }, ref) => {
     const isExternal = href?.includes("://");
     const As = to ? Link : "a";
     const props = {
@@ -13,7 +13,11 @@ export const Button = React.forwardRef(
       to: to,
       target: isExternal ? "_blank" : undefined,
       rel: isExternal ? "noopener noreferrer" : undefined,
-      className: classes("button", secondary ? "button-secondary" : ""),
+      className: classes(
+        "button",
+        secondary ? "button-secondary" : "",
+        className,
+      ),
       ...rest,
     };
 

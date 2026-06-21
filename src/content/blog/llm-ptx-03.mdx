@@ -13,7 +13,7 @@ import {App, part3} from './llm-ptx.jsx'
 import {CodeWindow} from '../../components/ui.jsx'
 import RepoCard from "react-repo-card";
 
-<div className="w-[200px] m-auto my-4">
+<div className="blog-repo-card">
   <RepoCard username="theunnecessarythings" repository="llm-ptx" />
 </div>
 
@@ -22,7 +22,7 @@ Next in line, in terms of complexity is the `encoder` kernel. This time we also 
 
 In CUDA, that means—loading multiple data points at once. Instead of reading one 32-bit float at a time, we could load a 128-bit `float4`. Following is the reference implementation in CUDA C++, which uses this vectorized approach.
 
-<div className="w-5/6 m-auto">
+<div className="blog-code-wrap">
 <CodeWindow title="CUDA C++ Kernel" language="cpp" code={`__global__ void encoder_fwd_kernel_vec(float *out, const int *inp,
                                        const float *wte, const float *wpe,
                                        int B, int T, int C) {
@@ -88,7 +88,7 @@ Apart from the vectorized load and store, the rest of the code is a fairly strai
 As you can the only difference here is the usage of the vectorized load/store using 
 `ld.global.v4.f32` and `st. global.v4.f32`. Once the PTX is written, hooking it up to the host code should be familiar by now.
 
-<div className="w-5/6 m-auto">
+<div className="blog-code-wrap">
 <CodeWindow title="C++ Runner" language="cpp" code={`void encoder_forward(float *out, const int *inp, const float *wte,
                      const float *wpe, int B, int T, int C,
                      cudaStream_t stream = 0) {
@@ -119,7 +119,7 @@ As you can the only difference here is the usage of the vectorized load/store us
 
 This kernel was a bit different compared to the first two. It was less about math and more about data movement. Getting the pointer arithmetic right in PTX is always a bit tricky, but seeing the vectorized loads work correctly is incredibly satisfying. Next up is the Layer Normalization Kernel. It combines a lot of ideas: complex math, parallel reductions, and a heavy reliance on shared memory. See you there.
 
-<div className="flex justify-between mt-8 pt-4 border-t border-gray-700">
+<div className="blog-post-nav">
   <a href="/blog/llm-ptx-02" className="text-blue-400 hover:text-blue-300 font-semibold">
     ← Previous: The GELU Kernel
   </a>

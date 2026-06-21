@@ -1697,7 +1697,7 @@ const CudaHighlighter = ({ code }) => {
 
   return (
     <pre
-      className="whitespace-pre-wrap break-words"
+      className="ptx-code"
       dangerouslySetInnerHTML={highlight(code)}
     />
   );
@@ -1737,7 +1737,7 @@ const PtxHighlighter = ({ code }) => {
 
   return (
     <pre
-      className="whitespace-pre-wrap break-words"
+      className="ptx-code"
       dangerouslySetInnerHTML={highlight(code)}
     />
   );
@@ -1747,12 +1747,12 @@ const PtxHighlighter = ({ code }) => {
 const Explanation = ({ text }) => {
   const parts = text.split(/(`[^`]+`)/g);
   return (
-    <p className="text-gray-300 leading-relaxed">
+    <p className="ptx-explanation-text">
       {parts.map((part, i) =>
         part.startsWith("`") ? (
           <code
             key={i}
-            className="bg-gray-700 text-cyan-300 font-mono rounded-md px-1.5 py-0.5 mx-0.5"
+            className="ptx-inline-code"
           >
             {part.slice(1, -1)}
           </code>
@@ -1767,61 +1767,54 @@ const Explanation = ({ text }) => {
 // --- Main App Component ---
 export function App({ part }) {
   const [hoveredIndex, setHoveredIndex] = useState(null);
+  const hasCode = (code) => Boolean(code?.trim());
 
   return (
-    <main>
-      {/* Header Row for larger screens */}
-      <div className="hidden md:grid grid-cols-1 md:grid-cols-2 lg:grid-cols-10 gap-x-6 font-mono text-base font-semibold border-b-2 border-gray-700 pb-3 m-4">
-        <div className="lg:col-span-3 text-green-400">CUDA C++</div>
-        <div className="lg:col-span-3 text-yellow-400">PTX Assembly</div>
-        <div className="lg:col-span-4 text-blue-400">Explanation</div>
+    <main className="ptx-walkthrough">
+      <div className="ptx-walkthrough-header">
+        <div>CUDA C++</div>
+        <div>PTX Assembly</div>
+        <div>Explanation</div>
       </div>
 
-      <div className="space-y-1 m-4">
+      <div className="ptx-walkthrough-rows">
         {part.map((item, index) => (
-          <div key={index} className="m-0 p-0">
+          <div key={index} className="ptx-walkthrough-row-shell">
             <div
               key={index}
-              className="relative grid grid-cols-1 md:grid-cols-2 lg:grid-cols-10 gap-x-6  rounded-lg transition-all duration-300 ease-out"
+              className={`ptx-walkthrough-row ${hoveredIndex === index ? "is-active" : ""}`}
               onMouseEnter={() => setHoveredIndex(index)}
               onMouseLeave={() => setHoveredIndex(null)}
             >
-              {/* Glow effect on hover */}
-              <div
-                className={`absolute inset-0 rounded-xl border border-transparent transition-all duration-300 ${hoveredIndex === index ? "border-cyan-500/50 bg-gray-800/50 shadow-2xl shadow-cyan-500/10" : ""}`}
-              ></div>
-
-              {/* CUDA Column */}
-              <div className="relative lg:col-span-3">
-                <div className="md:hidden text-sm font-bold text-green-400 mb-2">
-                  CUDA C++
-                </div>
-                <div className="font-mono text-sm p-3 rounded-md h-full flex flex-col justify-center text-green-300">
-                  <CudaHighlighter code={item.cuda} />
-                </div>
+              <div className="ptx-walkthrough-cell">
+                {hasCode(item.cuda) && (
+                  <>
+                    <div className="ptx-mobile-label">CUDA C++</div>
+                    <div className="ptx-code-panel ptx-code-panel-cuda">
+                      <CudaHighlighter code={item.cuda} />
+                    </div>
+                  </>
+                )}
               </div>
 
-              {/* PTX Column */}
-              <div className="relative lg:col-span-3">
-                <div className="md:hidden text-sm font-bold text-yellow-400 mb-2">
-                  PTX Assembly
-                </div>
-                <div className="font-mono text-sm p-3 rounded-md h-full flex flex-col justify-center text-yellow-300">
-                  <PtxHighlighter code={item.ptx} />
-                </div>
+              <div className="ptx-walkthrough-cell">
+                {hasCode(item.ptx) && (
+                  <>
+                    <div className="ptx-mobile-label">PTX Assembly</div>
+                    <div className="ptx-code-panel ptx-code-panel-ptx">
+                      <PtxHighlighter code={item.ptx} />
+                    </div>
+                  </>
+                )}
               </div>
 
-              {/* Explanation Column */}
-              <div className="relative lg:col-span-4">
-                <div className="md:hidden text-sm font-bold text-blue-400 mb-2">
-                  Explanation
-                </div>
-                <div className="h-full flex items-center">
+              <div className="ptx-walkthrough-cell">
+                <div className="ptx-mobile-label">Explanation</div>
+                <div className="ptx-explanation-panel">
                   <Explanation text={item.explanation} />
                 </div>
               </div>
             </div>
-            <hr className="border-gray-700" style={{ margin: 0 }} />
           </div>
         ))}
       </div>

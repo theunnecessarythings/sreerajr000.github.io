@@ -1,38 +1,48 @@
 import React from "react";
 import { motion } from "framer-motion";
-import { DecoderText } from "./decoder_text";
 import { galleryData } from "../gallery_data";
 
-export const GalleryPage = ({ animationsReady, onSelectImage }) => (
-  <main className="flex-1 m-4 p-4 sm:m-6 sm:p-6 md:m-12 md:p-12">
-    <div className="max-w-7xl mx-auto">
-      <motion.h2
-        className="layered-title font-display text-4xl md:text-5xl font-bold text-white my-8 py-4"
-        data-text="Gallery"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.3 }}
-      >
-        <DecoderText text="Gallery" start={animationsReady} delay={300} />
-      </motion.h2>
-      <div className="columns-1 sm:columns-2 md:columns-3 gap-4">
-        {galleryData.map((item, index) => (
-          <motion.div
-            key={item.id}
-            className="mb-4 break-inside-avoid cursor-pointer group"
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.5, delay: 0.4 + 0.1 * index }}
-            onClick={() => onSelectImage(index)}
-          >
-            <img
-              src={item.src}
-              alt={item.alt}
-              className="w-full h-auto rounded-lg transition-all duration-300 ease-in-out opacity-80 group-hover:opacity-100 group-hover:scale-105"
-            />
-          </motion.div>
-        ))}
+const MotionButton = motion.button;
+const MotionDiv = motion.div;
+
+const fade = {
+  initial: { opacity: 0, y: 22 },
+  animate: { opacity: 1, y: 0 },
+};
+
+export const GalleryPage = ({ onSelectImage }) => (
+  <main className="page-shell">
+    <MotionDiv
+      {...fade}
+      transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+      className="gallery-hero"
+    >
+      <div>
+        <p className="eyebrow mb-4">Gallery</p>
+        <h1 className="page-title">Visual archive</h1>
+        <p className="muted mt-5 max-w-2xl leading-7">
+          A small collection of renders, photos, and visual experiments.
+        </p>
       </div>
+      <div className="gallery-hero-count">
+        <strong>{galleryData.length}</strong>
+        <span>images</span>
+      </div>
+    </MotionDiv>
+
+    <div className="gallery-grid">
+      {galleryData.map((item, index) => (
+        <MotionButton
+          key={item.id}
+          {...fade}
+          transition={{ duration: 0.5, delay: index * 0.04, ease: [0.22, 1, 0.36, 1] }}
+          onClick={() => onSelectImage(index)}
+          className="gallery-tile"
+          aria-label={`Open ${item.alt}`}
+        >
+          <img src={item.src} alt={item.alt} />
+        </MotionButton>
+      ))}
     </div>
   </main>
 );

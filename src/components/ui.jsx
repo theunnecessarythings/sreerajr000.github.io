@@ -3,35 +3,60 @@ import { X } from "lucide-react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import React, { useRef, useEffect } from "react";
 import { galleryData } from "../gallery_data";
-import { useNavigate } from "react-router-dom";
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { atomDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 
+const MotionDiv = motion.div;
+const MotionImg = motion.img;
+
 export const CustomLogo = () => (
-  <div className="flex items-center gap-1.5">
-    <div className="w-6 h-6 bg-gray-300"></div>
-    <div className="flex flex-col gap-1.5">
-      <div className="w-6 h-1 bg-gray-300"></div>
-      <div className="w-4 h-1 bg-gray-300"></div>
-    </div>
+  <div className="grid h-9 w-[3.35rem] place-items-center rounded-[var(--radius)] border border-[rgba(var(--accent-rgb),0.35)] bg-[rgba(var(--accent-rgb),0.08)] font-mono text-[0.68rem] font-black tracking-[0.12em] text-[var(--accent)]">
+    SR/00
   </div>
 );
 
 export const ToolkitItem = ({ icon, name, delay }) => (
-  <motion.div
-    className="flex flex-col items-center justify-center gap-2 p-4 bg-gray-800/50 border border-gray-700/50"
+  <MotionDiv
+    className="card flex flex-col items-center justify-center gap-2 p-4"
     initial={{ opacity: 0, scale: 0.9 }}
     animate={{ opacity: 1, scale: 1 }}
     transition={{ duration: 0.4, delay }}
-    whileHover={{ scale: 1.05, backgroundColor: "rgba(55, 65, 81, 0.7)" }}
+    whileHover={{ y: -2 }}
   >
-    <div className="w-10 h-10 text-yellow-400">{icon}</div>
-    <span className="font-body font-bold text-sm text-gray-300">{name}</span>
-  </motion.div>
+    <div className="h-10 w-10 text-[var(--accent)]">{icon}</div>
+    <span className="text-sm font-bold text-[var(--text-muted)]">{name}</span>
+  </MotionDiv>
 );
 
 export const FullscreenImage = ({ src, onClose, onNavigate }) => {
   const currentIndex = src;
+
+  useEffect(() => {
+    if (currentIndex === null) return undefined;
+
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onClose();
+        return;
+      }
+
+      if (event.key === "ArrowLeft") {
+        event.preventDefault();
+        onNavigate("prev");
+        return;
+      }
+
+      if (event.key === "ArrowRight") {
+        event.preventDefault();
+        onNavigate("next");
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [currentIndex, onClose, onNavigate]);
+
   if (currentIndex === null) return null;
 
   const image = galleryData[currentIndex];
@@ -54,8 +79,8 @@ export const FullscreenImage = ({ src, onClose, onNavigate }) => {
   const direction = 1;
 
   return (
-    <motion.div
-      className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center"
+    <MotionDiv
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/90"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
@@ -63,15 +88,17 @@ export const FullscreenImage = ({ src, onClose, onNavigate }) => {
     >
       {/* Close Button */}
       <button
-        className="absolute top-6 right-6 text-gray-400 hover:text-white transition-colors z-50"
+        className="absolute right-6 top-6 z-50 rounded-md border border-white/10 bg-white/5 p-2 text-white/70 transition-colors hover:text-white"
         onClick={onClose}
+        aria-label="Close image"
       >
         <X size={32} />
       </button>
 
       {/* Prev Button */}
       <button
-        className="absolute left-4 sm:left-8 text-white/50 hover:text-white transition-colors z-50 p-4"
+        className="absolute left-4 z-50 rounded-md border border-white/10 bg-white/5 p-3 text-white/60 transition-colors hover:text-white sm:left-8"
+        aria-label="Previous image"
         onClick={(e) => {
           e.stopPropagation();
           onNavigate("prev");
@@ -82,7 +109,8 @@ export const FullscreenImage = ({ src, onClose, onNavigate }) => {
 
       {/* Next Button */}
       <button
-        className="absolute right-4 sm:right-8 text-white/50 hover:text-white transition-colors z-50 p-4"
+        className="absolute right-4 z-50 rounded-md border border-white/10 bg-white/5 p-3 text-white/60 transition-colors hover:text-white sm:right-8"
+        aria-label="Next image"
         onClick={(e) => {
           e.stopPropagation();
           onNavigate("next");
@@ -92,11 +120,11 @@ export const FullscreenImage = ({ src, onClose, onNavigate }) => {
       </button>
 
       <AnimatePresence initial={false} custom={direction}>
-        <motion.img
+        <MotionImg
           key={currentIndex}
           src={image.src}
           alt={image.alt}
-          className="max-w-[90vw] max-h-[90vh] object-contain rounded-lg shadow-2xl"
+          className="max-h-[90vh] max-w-[90vw] rounded-[var(--radius)] object-contain shadow-2xl"
           variants={variants}
           initial="enter"
           animate="center"
@@ -109,7 +137,7 @@ export const FullscreenImage = ({ src, onClose, onNavigate }) => {
           onClick={(e) => e.stopPropagation()} // Prevent closing when clicking the image
         />
       </AnimatePresence>
-    </motion.div>
+    </MotionDiv>
   );
 };
 
@@ -156,9 +184,7 @@ export const AnimateOnScroll = ({ children, delay = 0 }) => {
 
 export const Card = ({ children, className = "" }) => {
   return (
-    <div
-      className={`border border-gray-600 p-6 rounded-lg bg-black/20 shadow-lg ${className}`}
-    >
+    <div className={`content-card ${className}`}>
       {children}
     </div>
   );
@@ -168,32 +194,21 @@ export const Card = ({ children, className = "" }) => {
 export const CodeWindow = ({ className = "", code, language, title }) => {
   return (
     <div
-      className={
-        "bg-gray-900/70 border border-gray-700 rounded-lg shadow-lg my-6 " +
-        className
-      }
+      className={"code-window " + className}
     >
-      <div className="flex items-center justify-between px-4 border-b border-gray-700">
+      <div className="code-window-header">
         <div className="flex items-center gap-2">
-          <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-          <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
-          <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+          <div className="h-2.5 w-2.5 rounded-full bg-[var(--danger)]"></div>
+          <div className="h-2.5 w-2.5 rounded-full bg-[var(--accent-strong)]"></div>
+          <div className="h-2.5 w-2.5 rounded-full bg-[var(--accent)]"></div>
         </div>
-        {title && (
-          <p
-            className="text-sm text-white"
-            style={{ fontFamily: "monospace", margin: "4px" }}
-          >
-            {title}
-          </p>
-        )}
-        <div></div>
+        {title && <p>{title}</p>}
       </div>
-      <div className="text-sm grid">
+      <div className="code-window-body">
         <SyntaxHighlighter
           language={language}
           style={atomDark}
-          customStyle={{ background: "transparent", margin: 0, padding: 12 }}
+          customStyle={{ background: "transparent", margin: 0, padding: 14 }}
         >
           {code}
         </SyntaxHighlighter>
@@ -238,7 +253,7 @@ export const BarChart = ({ data, options }) => {
   }, [data, options]);
 
   return (
-    <div className="chart-container relative w-full h-[350px] max-w-xl mx-auto">
+    <div className="chart-container relative mx-auto h-[350px] w-full max-w-xl">
       <canvas ref={chartRef}></canvas>
     </div>
   );
@@ -247,14 +262,14 @@ export const BarChart = ({ data, options }) => {
 import { CheckSquare, Square } from "lucide-react";
 
 export const ChecklistItem = ({ text, checked }) => (
-  <li className={`flex items-center ${!checked ? "text-gray-400" : ""}`}>
+  <li className={`flex items-center ${!checked ? "text-[var(--text-muted)]" : ""}`}>
     {checked ? (
-      <CheckSquare className="w-5 h-5 text-green-500 flex-shrink-0" />
+      <CheckSquare className="h-5 w-5 flex-shrink-0 text-[var(--accent)]" />
     ) : (
-      <Square className="w-5 h-5 text-gray-400 flex-shrink-0" />
+      <Square className="h-5 w-5 flex-shrink-0 text-[var(--text-subtle)]" />
     )}
     <span
-      className={`ml-3 font-medium ${!checked ? "text-gray-400" : ""}`}
+      className={`ml-3 font-medium ${!checked ? "text-[var(--text-muted)]" : ""}`}
       dangerouslySetInnerHTML={{ __html: text }}
     />
   </li>

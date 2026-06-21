@@ -13,7 +13,7 @@ import {App, part5} from './llm-ptx.jsx'
 import {CodeWindow} from '../../components/ui.jsx'
 import RepoCard from "react-repo-card";
 
-<div className="w-[200px] m-auto my-4">
+<div className="blog-repo-card">
   <RepoCard username="theunnecessarythings" repository="llm-ptx" />
 </div>
 
@@ -21,7 +21,7 @@ In the previous part we implemented the layer normalization kernel. Like layer n
 
 This meant we could reuse the reduction patterns we painstakingly wrote while building the LayerNorm kernel. Following is the CUDA C++ reference implementation, which involves a `blockReduceMax` followed by a `blockReduceSum`.
 
-<div className="w-5/6 m-auto">
+<div className="blog-code-wrap">
 <CodeWindow title="CUDA C++ Kernel" language="cpp" code={`__global__ void
 softmax_fwd_kernel(float *__restrict__ probs,        // [B*T][Vp]
                    const float *__restrict__ logits, // [B*T][Vp]
@@ -84,7 +84,7 @@ This was smooth since we have done most of it before. The only part I didn't kno
 
 Implementing this in PTX felt like a good test of the concepts we'd learned from the previous kernel. The host-side code to launch the kernel was, once again, a straightforward affair.
 
-<div className="w-5/6 m-auto">
+<div className="blog-code-wrap">
 <CodeWindow title="C++ Runner" language="cpp" code={`void softmax_forward(float *probs, const float *logits, int B, int T, int V,
                      int Vp, cudaStream_t stream = 0) {
       static CUmodule module = nullptr;
@@ -113,7 +113,7 @@ Implementing this in PTX felt like a good test of the concepts we'd learned from
 
 With the Softmax kernel complete, all the individual, vector-wise components of the GPT-2 model are now implemented in hand-written PTX. Now, only the heavyweights remain: the matrix multiplication kernels and the attention kernels that form the backbone of the transformer architecture. That's where the real performance gains (and potential for frustration) lie, and  we'll be tackling that next.
 
-<div className="flex justify-between mt-8 pt-4 border-t border-gray-700">
+<div className="blog-post-nav">
   <a href="/blog/llm-ptx-04" className="text-blue-400 hover:text-blue-300 font-semibold">
     ← Previous: The Layernorm Kernel
   </a>

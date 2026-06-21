@@ -1,121 +1,114 @@
 import React, { useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
+import { ArrowLeft, ArrowRight, CalendarDays, Copy, ExternalLink } from "lucide-react";
 import { Button } from "./button.jsx";
-import { ArrowLeft, ExternalLink, Copy } from "lucide-react";
-import { DecoderText } from "./decoder_text.jsx";
+import { formatDate, publicationsData } from "../content_data";
 
-const posts = import.meta.glob("/src/content/publications/*.mdx", {
-  eager: true,
-});
+const MotionArticle = motion.article;
+const MotionDiv = motion.div;
+const MotionHeader = motion.header;
 
-const publicationsData = Object.keys(posts)
-  .map((file) => {
-    const slug = file.split("/").pop().replace(".mdx", "");
-    const post = posts[file];
-    return {
-      slug,
-      ...post.frontmatter,
-    };
-  })
-  .sort((a, b) => new Date(b.date) - new Date(a.date));
-
-export const PublicationsPage = ({ animationsReady }) => {
-  const navigate = useNavigate();
-  return (
-    <main className="flex-1 p-4 sm:p-6 md:p-12 m-4 sm:m-6 md:m-12">
-      <div className="max-w-5xl mx-auto">
-        <motion.h2
-          className="layered-title font-display text-4xl md:text-5xl font-bold text-white mb-8 py-4"
-          data-text="Publications"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.1 }}
-        >
-          <DecoderText text="Publications" start={animationsReady} />
-        </motion.h2>
-        <div className="space-y-8">
-          {publicationsData.map((pub, index) => (
-            <React.Fragment key={pub.slug}>
-              <motion.div
-                className="list-item-hover-effect group -m-4 p-4 cursor-pointer"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.2 * (index + 1) }}
-                onClick={() => {
-                  navigate(`/publications/${pub.slug}`);
-                }}
-              >
-                <div className="grid grid-cols-1 sm:grid-cols-4 gap-6 items-start">
-                  {pub.image && (
-                    <div className="sm:col-span-1">
-                      <div className="aspect-video rounded-lg overflow-hidden border border-gray-800 group">
-                        <img
-                          src={pub.image}
-                          alt={pub.title}
-                          className="
-      h-full m-auto w-full  object-center
-      transition-opacity duration-300 ease-in-out
-      opacity-80 group-hover:opacity-100
-    "
-                        />
-                      </div>
-                    </div>
-                  )}
-                  <div
-                    className={pub.image ? "sm:col-span-3" : "sm:col-span-4"}
-                  >
-                    <h3 className="font-display text-2xl text-white font-bold">
-                      {pub.title}
-                    </h3>
-                    <p className="font-body text-gray-400 mt-2">
-                      {pub.authors}
-                    </p>
-                    <p className="font-body text-amber-400 mt-2">{pub.venue}</p>
-                  </div>
-                </div>
-              </motion.div>
-              {index < publicationsData.length - 1 && (
-                <hr className="border-gray-800" />
-              )}
-            </React.Fragment>
-          ))}
-        </div>
-      </div>
-    </main>
-  );
+const fade = {
+  initial: { opacity: 0, y: 22 },
+  animate: { opacity: 1, y: 0 },
 };
 
-export const PublicationDetailPage = ({ animationsReady }) => {
+const getAdjacentPublication = (publication, offset) => {
+  const index = publicationsData.findIndex((item) => item.slug === publication.slug);
+  if (index === -1) return null;
+  return publicationsData[index + offset] || null;
+};
+
+const PublicationCard = ({ publication, index }) => (
+  <MotionArticle
+    key={publication.slug}
+    {...fade}
+    transition={{ duration: 0.5, delay: index * 0.055, ease: [0.22, 1, 0.36, 1] }}
+    className="publication-card"
+  >
+    <Link to={`/publications/${publication.slug}`} className="publication-card-link">
+      <div className="publication-card-index">
+        <span>{String(index + 1).padStart(2, "0")}</span>
+        <small>{formatDate(publication.date)}</small>
+      </div>
+      {publication.image && (
+        <div className="publication-card-media">
+          <img src={publication.image} alt={publication.title} />
+        </div>
+      )}
+      <div className="publication-card-body">
+        <p className="eyebrow mb-2">{publication.venue}</p>
+        <h2>{publication.title}</h2>
+        <p>{publication.authors}</p>
+        <div className="publication-card-meta">
+          <span>{publication.publisher}</span>
+        </div>
+      </div>
+      <ArrowRight className="publication-card-arrow" aria-hidden="true" />
+    </Link>
+  </MotionArticle>
+);
+
+export const PublicationsPage = () => (
+  <main className="page-shell">
+    <MotionDiv
+      {...fade}
+      transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+      className="publication-hero"
+    >
+      <div>
+        <p className="eyebrow mb-4">Publications</p>
+        <h1 className="page-title">Research work</h1>
+        <p className="muted mt-5 max-w-2xl leading-7">
+          Published work on fair and robust AI, biometrics, deepfakes, and
+          generative model based bias mitigation.
+        </p>
+      </div>
+      <div className="publication-hero-count">
+        <strong>{publicationsData.length}</strong>
+        <span>papers</span>
+      </div>
+    </MotionDiv>
+
+    <div className="publication-overview">
+      <div>
+        <span>Focus</span>
+        <strong>Fairness, biometrics, and generative models</strong>
+      </div>
+      <div>
+        <span>Venues</span>
+        <strong>IEEE, Springer, Elsevier</strong>
+      </div>
+      <div>
+        <span>Years</span>
+        <strong>2021 - 2025</strong>
+      </div>
+    </div>
+
+    <div className="publication-list">
+      {publicationsData.map((publication, index) => (
+        <PublicationCard
+          key={publication.slug}
+          publication={publication}
+          index={index}
+        />
+      ))}
+    </div>
+  </main>
+);
+
+export const PublicationDetailPage = () => {
   const { slug } = useParams();
   const navigate = useNavigate();
   const [citationCopied, setCitationCopied] = useState(false);
-  const publication = publicationsData.find((p) => p.slug === slug);
+  const publication = publicationsData.find((item) => item.slug === slug);
 
-  if (!publication) return null; // Or a 404 component
-
-  const handleCopyCitation = () => {
-    const citationText = publication.citation;
-    if (!citationText) return;
-    const textArea = document.createElement("textarea");
-    textArea.value = citationText;
-    document.body.appendChild(textArea);
-    textArea.select();
-    document.execCommand("copy");
-    document.body.removeChild(textArea);
-
-    setCitationCopied(true);
-    setTimeout(() => setCitationCopied(false), 2000);
-  };
-
-  return (
-    <main className="flex-1 p-4 sm:p-6 md:p-12">
-      <div className="max-w-7xl mx-auto">
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.5 }}
-        >
+  if (!publication) {
+    return (
+      <main className="page-shell page-shell-narrow text-center">
+        <h1 className="page-title">Publication not found</h1>
+        <div className="mt-8">
           <Button
             onClick={() => navigate("/publications")}
             secondary
@@ -123,98 +116,109 @@ export const PublicationDetailPage = ({ animationsReady }) => {
           >
             Back to publications
           </Button>
-          {publication.image && (
-            <motion.div
-              className="my-8 overflow-hidden group h-128 flex justify-center items-center"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-            >
-              <img
-                src={publication.image}
-                alt={publication.title}
-                className="rounded-lg object-contain max-h-full max-w-full transition-all duration-300 ease-in-out group-hover:scale-105 opacity-80 group-hover:opacity-100"
-              />
-            </motion.div>
-          )}{" "}
-          <motion.h1
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="font-display text-3xl md:text-4xl font-bold text-white my-8"
-          >
-            {publication.title}
-          </motion.h1>
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="text-lg text-gray-400 mb-4"
-          >
-            <p>{publication.authors}</p>
-            <p className="text-amber-400 mt-2">
-              {publication.venue}, {publication.publisher}
-            </p>
-          </motion.div>
-          <motion.h2
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 }}
-            className="font-display text-3xl text-white font-bold mt-12 mb-4"
-          >
-            Abstract
-          </motion.h2>
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.6 }}
-            className="publication-content font-sans text-gray-300 text-lg leading-relaxed whitespace-pre-wrap"
-          >
-            <p>{publication.abstract}</p>
-          </motion.div>
-          {publication.citation && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.7 }}
-            >
-              <h2 className="font-display text-3xl text-white font-bold mt-12 mb-4">
-                Citation
-              </h2>
-              <div className="relative bg-gray-900/50 border border-gray-800 rounded-lg p-4 font-mono text-sm text-gray-400">
-                <pre className="whitespace-pre-wrap overflow-x-auto">
-                  <code>{publication.citation}</code>
-                </pre>
-                <Button
-                  onClick={handleCopyCitation}
-                  className="absolute top-2 right-2 p-2"
-                  secondary
-                >
-                  <Copy size={16} />
-                  <span className="sr-only">Copy Citation</span>
-                </Button>
-              </div>
-              <p
-                className={`text-xs mt-2 text-green-400 transition-opacity duration-300 ${citationCopied ? "opacity-100" : "opacity-0"}`}
-              >
-                Citation copied to clipboard!
-              </p>
-            </motion.div>
+        </div>
+      </main>
+    );
+  }
+
+  const handleCopyCitation = async () => {
+    if (!publication.citation) return;
+    await navigator.clipboard.writeText(publication.citation);
+    setCitationCopied(true);
+    setTimeout(() => setCitationCopied(false), 2000);
+  };
+
+  const previousPublication = getAdjacentPublication(publication, 1);
+  const nextPublication = getAdjacentPublication(publication, -1);
+
+  return (
+    <main className="page-shell publication-detail-shell">
+      <Button onClick={() => navigate("/publications")} secondary icon={<ArrowLeft />}>
+        Back to publications
+      </Button>
+
+      <MotionHeader
+        {...fade}
+        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+        className="publication-detail-header"
+      >
+        <p className="eyebrow mb-4">{publication.venue}</p>
+        <h1 className="page-title">{publication.title}</h1>
+        <div className="publication-detail-meta">
+          <span>{publication.authors}</span>
+          <span>{publication.publisher}</span>
+          {publication.date && (
+            <span>
+              <CalendarDays aria-hidden="true" />
+              {formatDate(publication.date)}
+            </span>
           )}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.8 }}
-            className="flex flex-wrap gap-4 mt-12"
+        </div>
+      </MotionHeader>
+
+      {publication.image && (
+        <MotionDiv
+          {...fade}
+          transition={{ duration: 0.5, delay: 0.08, ease: [0.22, 1, 0.36, 1] }}
+          className="publication-detail-media"
+        >
+          <img
+            src={publication.image}
+            alt={publication.title}
+          />
+        </MotionDiv>
+      )}
+
+      <section className="publication-content prose-content publication-abstract">
+        <h2>Abstract</h2>
+        <p>{publication.abstract}</p>
+      </section>
+
+      {publication.citation && (
+        <section className="mt-10">
+          <div className="mb-4 flex items-center justify-between gap-4">
+            <h2 className="section-title">Citation</h2>
+            <Button onClick={handleCopyCitation} secondary icon={<Copy />}>
+              Copy
+            </Button>
+          </div>
+          <pre className="readout overflow-x-auto p-4 text-sm text-[var(--text-muted)]">
+            <code>{publication.citation}</code>
+          </pre>
+          <p
+            className={`mt-2 text-sm text-[var(--accent)] transition-opacity ${
+              citationCopied ? "opacity-100" : "opacity-0"
+            }`}
           >
-            {publication.link && (
-              <Button href={publication.link} iconEnd={<ExternalLink />}>
-                View Publication
-              </Button>
-            )}
-          </motion.div>
-        </motion.div>
-      </div>
+            Citation copied to clipboard.
+          </p>
+        </section>
+      )}
+
+      {publication.link && (
+        <div className="mt-10">
+          <Button href={publication.link} iconEnd={<ExternalLink />}>
+            View Publication
+          </Button>
+        </div>
+      )}
+
+      {(previousPublication || nextPublication) && (
+        <nav className="publication-more" aria-label="Publication navigation">
+          {previousPublication && (
+            <Link to={`/publications/${previousPublication.slug}`}>
+              <span>Previous</span>
+              <strong>{previousPublication.title}</strong>
+            </Link>
+          )}
+          {nextPublication && (
+            <Link to={`/publications/${nextPublication.slug}`}>
+              <span>Next</span>
+              <strong>{nextPublication.title}</strong>
+            </Link>
+          )}
+        </nav>
+      )}
     </main>
   );
 };

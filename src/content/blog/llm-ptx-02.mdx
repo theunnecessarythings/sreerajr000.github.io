@@ -13,7 +13,7 @@ import {App, part2} from './llm-ptx.jsx'
 import {CodeWindow} from '../../components/ui.jsx'
 import RepoCard from "react-repo-card";
 
-<div className="w-[200px] m-auto my-4">
+<div className="blog-repo-card">
   <RepoCard username="theunnecessarythings" repository="llm-ptx" />
 </div>
 
@@ -23,7 +23,7 @@ I thought it would be smarter to tackle kernels needed for the GPT-2 inference i
 
 As before, my process started with a clean, reliable CUDA C++ implementation to serve as my ground truth. This is the code I'd be trying to replicate in PTX:
 
-<div className="w-5/6 m-auto">
+<div className="blog-code-wrap">
 <CodeWindow title="CUDA C++ Kernel" language="cpp" code={`#define GELU_SCALING_FACTOR sqrtf(2.0f / M_PI)
 
 __global__ void gelu_fwd_kernel(float *__restrict__ out,
@@ -53,7 +53,7 @@ The rest of it is just annoying grunt work of splitting it into multiple instruc
 
 The C++ host code once again is pretty much identical to the previous one, the only difference here is the arguments that are being passed; load the compiled PTX file as a module, get the specific function, and then launch it with the correct parameters.
 
-<div className="w-5/6 m-auto">
+<div className="blog-code-wrap">
 <CodeWindow title="C++ Runner" language="cpp" code={`void gelu_forward(float *out, const float *inp, int N,
                   cudaStream_t stream = 0) {
     static CUmodule module = nullptr;
@@ -82,7 +82,7 @@ The C++ host code once again is pretty much identical to the previous one, the o
 
 Okay, two kernels down. This one felt more like a focused exercise in translating math to low-level instructions. The next kernel (encoder) though, we advance our learning process, we learn about vectorized loads and stores.
 
-<div className="flex justify-between mt-8 pt-4 border-t border-gray-700">
+<div className="blog-post-nav">
   <a href="/blog/llm-ptx-01" className="text-blue-400 hover:text-blue-300 font-semibold">
     ← Previous: Introduction
   </a>

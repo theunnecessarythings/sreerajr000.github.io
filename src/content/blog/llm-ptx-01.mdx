@@ -13,7 +13,7 @@ import {App, part1} from './llm-ptx.jsx'
 import {CodeWindow} from '../../components/ui.jsx'
 import RepoCard from "react-repo-card";
 
-<div className="w-[200px] m-auto my-4">
+<div className="blog-repo-card">
   <RepoCard username="theunnecessarythings" repository="llm-ptx" />
 </div>
 
@@ -32,7 +32,7 @@ So throughout this process, my main crutches were the official NVIDIA PTX manual
 
 Without further ado, let's start. I figured I start with the easiest kernel out of all, the residual kernel since it is essentially a vector add. For reference, here is the CUDA implementation from `llm.c`. I am assuming you know some CUDA and its programming model if you are already here. Otherwise, welp come back when you do so (the PMPP book I've heard is good, one of these days I ought to finish it).
 
-<div className="w-5/6 m-auto">
+<div className="blog-code-wrap">
 <CodeWindow title="Residual Kernel" language="cpp" code={`__global__ void residual_fwd_kernel(float *__restrict__ out,
                                     const float *__restrict__ inp1,
                                     const float *__restrict__ inp2, int N) {
@@ -59,7 +59,7 @@ Okay, now that we have our kernel, we can start writing it in PTX. For all the k
 
 After dissecting the CUDA version and painstakingly crafting the PTX equivalent, the final piece of the puzzle was calling my new PTX kernel from the host C++ code. This requires a bit of boilerplate to load the compiled PTX module and launch the kernel, but once you do it for one kernel the rest of them are the same.
 
-<div className="w-5/6 m-auto">
+<div className="blog-code-wrap">
 <CodeWindow title="C++ Runner" language="cpp" code={`void residual_forward(float *out, const float *inp1, const float *inp2, int N,
                       cudaStream_t stream = 0) {
     static CUmodule module = nullptr;
@@ -90,7 +90,7 @@ After dissecting the CUDA version and painstakingly crafting the PTX equivalent,
 And that's it, our first kernel is done. It might seem like a small piece of the puzzle, but getting this residual connection working—from the initial CUDA C++ reference to the hand-written PTX and the host code to launch it—felt like a huge milestone and felt much more confident in writing the rest of the kernels that are much larger and complex. 
 
 In the next post, we will see how to translate a GELU kernel. See you there, or not.
-<div className="flex justify-end mt-8 pt-4 border-t border-gray-700">
+<div className="blog-post-nav blog-post-nav-end">
   <a href="/blog/llm-ptx-02" className="text-blue-400 hover:text-blue-300 font-semibold">
     Next: The GELU Kernel →
   </a>

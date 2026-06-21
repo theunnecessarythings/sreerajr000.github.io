@@ -1,340 +1,428 @@
-import { useNavigate, useParams, useSearchParams } from "react-router-dom";
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, ArrowRight } from "lucide-react";
+import { ArrowLeft, ArrowRight, CalendarDays, Clock3 } from "lucide-react";
 import { Button } from "./button";
-import { DecoderText } from "./decoder_text";
 import { Comments } from "./comments";
+import { blogPosts, formatDate, getAllTags } from "../content_data";
 
-const posts = import.meta.glob("/src/content/blog/*.mdx", { eager: true });
+const MotionArticle = motion.article;
+const MotionDiv = motion.div;
+const MotionHeader = motion.header;
 
-const blogPosts = Object.keys(posts)
-  .map((file) => {
-    const slug = file.split("/").pop().replace(".mdx", "");
-    const post = posts[file];
-    return {
-      slug,
-      ...post.frontmatter,
-      Content: post.default,
-    };
-  })
-  .sort((a, b) => new Date(b.date) - new Date(a.date));
+const fade = {
+  initial: { opacity: 0, y: 22 },
+  animate: { opacity: 1, y: 0 },
+};
 
-const ArticleEntry = ({
-  post,
-  delay,
-  animationsReady,
-  isFeatured,
-  onClick,
-  onTagClick,
-}) => (
-  <motion.div
-    className={
-      !isFeatured
-        ? "list-item-hover-effect group m-8 p-4 cursor-pointer"
-        : "cursor-pointer"
-    }
-    initial={{ opacity: 0, y: 20 }}
-    animate={{ opacity: 1, y: 0 }}
-    transition={{ duration: 0.5, delay }}
-    onClick={!post.comingSoon ? onClick : undefined}
+const getSeriesPosts = (post) => {
+  if (!post?.slug?.startsWith("llm-ptx-")) return [];
+  return blogPosts
+    .filter((item) => item.slug.startsWith("llm-ptx-"))
+    .slice()
+    .reverse();
+};
+
+const getAdjacentPost = (posts, post, offset) => {
+  const index = posts.findIndex((item) => item.slug === post.slug);
+  if (index === -1) return null;
+  return posts[index + offset] || null;
+};
+
+const getRelatedPosts = (post) =>
+  blogPosts
+    .filter((item) => item.slug !== post.slug)
+    .map((item) => ({
+      ...item,
+      score: (item.tags || []).filter((tag) => post.tags?.includes(tag)).length,
+    }))
+    .filter((item) => item.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 3);
+
+const ArticleCard = ({ post, index, delay = 0 }) => (
+  <MotionArticle
+    {...fade}
+    transition={{ duration: 0.5, delay, ease: [0.22, 1, 0.36, 1] }}
+    className="blog-card"
   >
-    <div className="h-px w-16 bg-cyan-400 mb-3" />
-    <p className="font-body text-sm text-gray-400 mb-2">{post.date}</p>
-    <div
-      className={`font-display font-bold text-white mb-3 ${
-        isFeatured ? "text-4xl" : "text-2xl"
-      }`}
-    >
-      {!post.comingSoon ? (
-        <h3 className="font-display text-2xl text-white font-bold">
-          {post.title}
-        </h3>
-      ) : (
-        <span className="text-gray-500">{post.title}</span>
-      )}
-    </div>
-    {!post.comingSoon && (
-      <>
-        <p className="font-body text-gray-300 mb-4">{post.summary}</p>
+    <Link to={`/blog/${post.slug}`} className="blog-card-link">
+      <div className="blog-card-meta">
+        <span>{String(index + 1).padStart(2, "0")}</span>
+        <span>{formatDate(post.date)}</span>
+        {post.readTime && <span>{post.readTime}</span>}
+      </div>
+      <div className="min-w-0">
+        <h2 className="blog-card-title">{post.title}</h2>
+        {post.summary && <p className="blog-card-summary">{post.summary}</p>}
         {post.tags && (
-          <div className="flex flex-wrap gap-2 mb-4">
+          <div className="mt-4 flex flex-wrap gap-2">
             {post.tags.map((tag) => (
-              <button
-                key={tag}
-                className="text-xs bg-cyan-400/10 text-cyan-400 px-2 py-1 rounded-full hover:bg-cyan-400/20 transition-colors"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onTagClick(tag);
-                }}
-              >
-                #{tag}
-              </button>
+              <span key={tag} className="chip">
+                {tag}
+              </span>
             ))}
           </div>
         )}
-      </>
-    )}
-    <div className="flex justify-between items-center mt-4">
-      {!post.comingSoon && (
-        <Button secondary to={`/blog/${post.slug}`} iconEnd={<ArrowRight />}>
-          Read article
-        </Button>
-      )}
-      {post.readTime && (
-        <span className="font-mono text-xs text-gray-500">{post.readTime}</span>
-      )}
-    </div>
-  </motion.div>
+      </div>
+      <ArrowRight className="blog-card-arrow" aria-hidden="true" />
+    </Link>
+  </MotionArticle>
 );
 
-export const BlogPage = ({ animationsReady }) => {
+const SmallPostLink = ({ post }) => (
+  <Link to={`/blog/${post.slug}`} className="blog-side-link">
+    <span>{post.title}</span>
+    <small>{formatDate(post.date)}</small>
+  </Link>
+);
+
+export const BlogPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedTag, setSelectedTag] = useState(searchParams.get("tag"));
   const [currentPage, setCurrentPage] = useState(1);
-  const navigate = useNavigate();
-
-  const featuredPosts = blogPosts.filter((p) => p.featured);
-  const latestPosts = blogPosts;
-  const allTags = [...new Set(latestPosts.flatMap((p) => p.tags || []))];
+  const allTags = getAllTags(blogPosts);
 
   useEffect(() => {
     setSelectedTag(searchParams.get("tag"));
   }, [searchParams]);
 
-  // Reset to page 1 whenever the filter changes
   useEffect(() => {
     setCurrentPage(1);
   }, [selectedTag]);
 
   const handleTagSelect = (tag) => {
     setSelectedTag(tag);
-    if (tag) {
-      setSearchParams({ tag });
-    } else {
-      setSearchParams({});
-    }
+    if (tag) setSearchParams({ tag });
+    else setSearchParams({});
   };
 
   const filteredPosts = selectedTag
-    ? latestPosts.filter((p) => p.tags?.includes(selectedTag))
-    : latestPosts;
-
-  // pagination logic
-  const postsPerPage = 4;
+    ? blogPosts.filter((post) => post.tags?.includes(selectedTag))
+    : blogPosts;
+  const postsPerPage = 5;
   const totalPages = Math.ceil(filteredPosts.length / postsPerPage);
   const startIndex = (currentPage - 1) * postsPerPage;
-  const paginatedPosts = filteredPosts.slice(
-    startIndex,
-    startIndex + postsPerPage,
-  );
+  const paginatedPosts = filteredPosts.slice(startIndex, startIndex + postsPerPage);
+  const featuredPost = blogPosts.find((post) => post.featured) || blogPosts[0];
+  const secondaryFeatured = blogPosts
+    .filter((post) => post.slug !== featuredPost?.slug && post.featured)
+    .slice(0, 3);
+  const seriesPosts = blogPosts
+    .filter((post) => post.slug.startsWith("llm-ptx-"))
+    .slice()
+    .reverse();
 
   return (
-    <main className="flex-1 flex flex-col flex-col-reverse md:flex-row p-4 m-4 sm:p-6 sm:m-6 md:p-12 md:m-12">
-      {/* Left column: paginated posts */}
-      <div className="md:w-6/12 lg:w-6/12 flex-shrink-0">
-        <motion.h2
-          className="layered-title font-display text-4xl md:text-5xl font-bold text-white mb-8 py-4"
-          data-text="Latest articles"
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.5, delay: 0.1 }}
-        >
-          <DecoderText text="Latest articles" start={animationsReady} />
-        </motion.h2>
-
-        <motion.div
-          className="flex flex-wrap gap-2 mb-6"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.2 }}
-        >
-          <button
-            onClick={() => handleTagSelect(null)}
-            className={`px-4 py-2 text-sm rounded-full transition-colors ${
-              selectedTag === null
-                ? "bg-cyan-400 text-gray-900 font-bold"
-                : "bg-gray-800 text-gray-300 hover:bg-gray-700"
-            }`}
-          >
-            All
-          </button>
-          {allTags.map((tag) => (
-            <button
-              key={tag}
-              onClick={() => handleTagSelect(tag)}
-              className={`px-4 py-2 text-sm rounded-full transition-colors ${
-                selectedTag === tag
-                  ? "bg-cyan-400 text-gray-900 font-bold"
-                  : "bg-gray-800 text-gray-300 hover:bg-gray-700"
-              }`}
-            >
-              {tag}
-            </button>
-          ))}
-        </motion.div>
-
-        <div className="space-y-6 py-4">
-          {paginatedPosts.map((post, index) => (
-            <React.Fragment key={post.slug}>
-              <ArticleEntry
-                post={post}
-                delay={0.2 * (index + 1)}
-                animationsReady={animationsReady}
-                isFeatured={false}
-                onClick={() => navigate(`/blog/${post.slug}`)}
-                onTagClick={handleTagSelect}
-              />
-              {index < paginatedPosts.length - 1 && (
-                <hr className="border-gray-800 my-4" />
-              )}
-            </React.Fragment>
-          ))}
+    <main className="page-shell">
+      <MotionDiv
+        {...fade}
+        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+        className="blog-hero"
+      >
+        <div>
+          <p className="eyebrow mb-4">Writing</p>
+          <h1 className="page-title">Technical notes and project logs</h1>
+          <p className="muted mt-5 max-w-2xl leading-7">
+            Notes on GPU programming, ML systems, compilers, and implementation
+            details that were worth writing down.
+          </p>
         </div>
+        <div className="blog-hero-count">
+          <strong>{blogPosts.length}</strong>
+          <span>posts</span>
+        </div>
+      </MotionDiv>
 
-        {/* pagination controls */}
-        {totalPages > 1 && (
-          <div className="flex justify-center items-center gap-4 mt-8">
-            <Button
-              secondary
-              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-              disabled={currentPage === 1}
-            >
-              Previous
-            </Button>
-            <span className="text-gray-300">
-              Page {currentPage} of {totalPages}
-            </span>
-            <Button
-              secondary
-              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-              disabled={currentPage === totalPages}
-            >
-              Next
-            </Button>
+      {featuredPost && (
+        <MotionArticle
+          {...fade}
+          transition={{ duration: 0.5, delay: 0.06, ease: [0.22, 1, 0.36, 1] }}
+          className="blog-featured"
+        >
+          <Link to={`/blog/${featuredPost.slug}`} className="blog-featured-link">
+            {featuredPost.imageUrl && (
+              <div className="blog-featured-media">
+                <img src={featuredPost.imageUrl} alt={featuredPost.title} />
+              </div>
+            )}
+            <div className="blog-featured-body">
+              <p className="eyebrow mb-3">Featured</p>
+              <h2>{featuredPost.title}</h2>
+              {featuredPost.summary && <p>{featuredPost.summary}</p>}
+              <div className="blog-inline-meta">
+                <span>
+                  <CalendarDays aria-hidden="true" />
+                  {formatDate(featuredPost.date)}
+                </span>
+                {featuredPost.readTime && (
+                  <span>
+                    <Clock3 aria-hidden="true" />
+                    {featuredPost.readTime}
+                  </span>
+                )}
+              </div>
+            </div>
+          </Link>
+        </MotionArticle>
+      )}
+
+      <div className="blog-layout">
+        <section className="grid gap-4">
+          <div className="blog-filter-bar">
+            <span className="machine-label">Topics</span>
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => handleTagSelect(null)}
+                className={`chip ${selectedTag === null ? "chip-active" : ""}`}
+              >
+                All
+              </button>
+              {allTags.map((tag) => (
+                <button
+                  key={tag}
+                  onClick={() => handleTagSelect(tag)}
+                  className={`chip ${selectedTag === tag ? "chip-active" : ""}`}
+                >
+                  {tag}
+                </button>
+              ))}
+            </div>
           </div>
-        )}
-      </div>
-      {/* Right column: featured posts */}
-      <div className="md:w-6/12 lg:w-6/12">
-        {featuredPosts.map((featuredPost) => (
-          <motion.div
-            key={featuredPost.slug}
-            className="h-[400px] m-4 bg-gray-800/20 border border-gray-700/50 p-6 md:p-8 flex flex-col group relative overflow-hidden"
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
-            onClick={() => navigate(`/blog/${featuredPost.slug}`)}
-          >
-            <div className="absolute inset-0 z-0 opacity-40 group-hover:opacity-60 transition-opacity duration-500">
-              <div
-                className="absolute inset-0 bg-cover bg-center transition-transform duration-500 ease-in-out group-hover:scale-105"
-                style={{ backgroundImage: `url(${featuredPost.imageUrl})` }}
-              />
+
+          {paginatedPosts.map((post, index) => (
+            <ArticleCard
+              key={post.slug}
+              post={post}
+              index={startIndex + index}
+              delay={index * 0.055}
+            />
+          ))}
+          {totalPages > 1 && (
+            <div className="blog-pagination">
+              <Button
+                secondary
+                onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                disabled={currentPage === 1}
+              >
+                Previous
+              </Button>
+              <span className="subtle text-sm">
+                Page {currentPage} of {totalPages}
+              </span>
+              <Button
+                secondary
+                onClick={() =>
+                  setCurrentPage((page) => Math.min(totalPages, page + 1))
+                }
+                disabled={currentPage === totalPages}
+              >
+                Next
+              </Button>
             </div>
-            <div className="relative z-10">
-              <p className="font-body text-sm font-bold text-yellow-400 mb-4">
-                Featured
+          )}
+        </section>
+
+        <aside className="blog-side-panel">
+          {seriesPosts.length > 0 && (
+            <div className="blog-side-section">
+              <h2>Series</h2>
+              <p>
+                A running sequence on building and understanding LLM kernels.
               </p>
-              <ArticleEntry
-                post={featuredPost}
-                delay={0.4}
-                animationsReady={animationsReady}
-                isFeatured={true}
-                onClick={() => navigate(`/blog/${featuredPost.slug}`)}
-                onTagClick={handleTagSelect}
-              />
+              <div className="blog-series-list">
+                {seriesPosts.slice(0, 5).map((post, index) => (
+                  <Link key={post.slug} to={`/blog/${post.slug}`}>
+                    <span>{String(index + 1).padStart(2, "0")}</span>
+                    {post.title}
+                  </Link>
+                ))}
+              </div>
             </div>
-          </motion.div>
-        ))}
+          )}
+
+          {secondaryFeatured.length > 0 && (
+            <div className="blog-side-section">
+              <h2>Featured</h2>
+              <div className="grid gap-3">
+                {secondaryFeatured.map((post) => (
+                  <SmallPostLink key={post.slug} post={post} />
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="blog-side-section">
+            <h2>Topics</h2>
+            <div className="flex flex-wrap gap-2">
+              {allTags.slice(0, 12).map((tag) => (
+                <button
+                  key={tag}
+                  onClick={() => handleTagSelect(tag)}
+                  className={`chip ${selectedTag === tag ? "chip-active" : ""}`}
+                >
+                  {tag}
+                </button>
+              ))}
+            </div>
+          </div>
+        </aside>
       </div>
     </main>
   );
 };
 
-export const BlogDetailPage = ({ animationsReady }) => {
+export const BlogDetailPage = () => {
   const { slug } = useParams();
   const navigate = useNavigate();
-  const post = blogPosts.find((p) => p.slug === slug);
+  const post = blogPosts.find((item) => item.slug === slug);
 
   if (!post) {
     return (
-      <main className="flex-1 p-12 text-center">
-        <h1 className="text-4xl font-bold">Post not found</h1>
-        <Button
-          onClick={() => navigate("/blog")}
-          secondary
-          icon={<ArrowLeft />}
-          className="mt-8"
-        >
-          Back to articles
-        </Button>
+      <main className="page-shell page-shell-narrow text-center">
+        <h1 className="page-title">Post not found</h1>
+        <div className="mt-8">
+          <Button onClick={() => navigate("/blog")} secondary icon={<ArrowLeft />}>
+            Back to articles
+          </Button>
+        </div>
       </main>
     );
   }
+
   const { Content } = post;
+  const seriesPosts = getSeriesPosts(post);
+  const seriesPrevious = getAdjacentPost(seriesPosts, post, -1);
+  const seriesNext = getAdjacentPost(seriesPosts, post, 1);
+  const chronologicalPrevious = getAdjacentPost(blogPosts, post, 1);
+  const chronologicalNext = getAdjacentPost(blogPosts, post, -1);
+  const previousPost = seriesPrevious || chronologicalPrevious;
+  const nextPost = seriesNext || chronologicalNext;
+  const relatedPosts = getRelatedPosts(post);
+
   return (
-    <main className="flex-1 m-4 sm:m-6 md:m-12">
-      <div className="bg-black/10 rounded-lg border-gray-800 border p-4 sm:p-6 md:p-12 max-w-7xl mx-auto">
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.5 }}
-        >
-          <Button
-            onClick={() => navigate("/blog")}
-            secondary
-            icon={<ArrowLeft />}
+    <main className="page-shell blog-detail-shell">
+      <div className="mb-8">
+        <Button onClick={() => navigate("/blog")} secondary icon={<ArrowLeft />}>
+          Back to writing
+        </Button>
+      </div>
+
+      <article className="blog-detail-article">
+          <MotionHeader
+            {...fade}
+            transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+            className="blog-detail-header"
           >
-            Back to articles
-          </Button>
-          <motion.div
-            className="my-8"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
+            <div className="blog-inline-meta">
+              <span>
+                <CalendarDays aria-hidden="true" />
+                {formatDate(post.date)}
+              </span>
+              {post.readTime && (
+                <span>
+                  <Clock3 aria-hidden="true" />
+                  {post.readTime}
+                </span>
+              )}
+            </div>
+            <h1 className="page-title">{post.title}</h1>
+            {post.summary && <p className="muted mt-5 leading-7">{post.summary}</p>}
+            <div className="mt-5 flex flex-wrap gap-2">
+              {(post.tags || []).map((tag) => (
+                <button
+                  key={tag}
+                  onClick={() => navigate(`/blog?tag=${tag}`)}
+                  className="chip"
+                >
+                  {tag}
+                </button>
+              ))}
+            </div>
+          </MotionHeader>
+
+          {post.imageUrl && (
+            <MotionDiv
+              {...fade}
+              transition={{ duration: 0.5, delay: 0.08, ease: [0.22, 1, 0.36, 1] }}
+              className="media-frame media-frame-cover blog-detail-media"
+            >
+              <img src={post.imageUrl} alt={post.title} />
+            </MotionDiv>
+          )}
+
+          <MotionArticle
+            {...fade}
+            transition={{ duration: 0.5, delay: 0.12, ease: [0.22, 1, 0.36, 1] }}
+            className="blog-content prose-content"
           >
-            <div className="h-px w-16 bg-cyan-400 mb-3" />
-            <p className="font-body text-sm text-gray-400 mb-2">{post.date}</p>
-            <h1 className="font-display text-4xl md:text-6xl font-bold text-white">
-              {post.title}
-            </h1>
-            {post.tags && (
-              <div className="flex flex-wrap gap-2 mt-4">
-                {post.tags.map((tag) => (
-                  <button
-                    key={tag}
-                    className="text-sm bg-cyan-400/10 text-cyan-400 px-3 py-1 rounded-full hover:bg-cyan-400/20 transition-colors"
-                    onClick={() => navigate(`/blog?tag=${tag}`)}
+            <Content />
+          </MotionArticle>
+
+          <nav className="blog-read-next" aria-label="Article navigation">
+            {previousPost && (
+              <Link to={`/blog/${previousPost.slug}`}>
+                <span>Previous</span>
+                <strong>{previousPost.title}</strong>
+              </Link>
+            )}
+            {nextPost && (
+              <Link to={`/blog/${nextPost.slug}`}>
+                <span>Next</span>
+                <strong>{nextPost.title}</strong>
+              </Link>
+            )}
+          </nav>
+          <Comments />
+      </article>
+
+      <aside className="blog-detail-footer">
+          {seriesPosts.length > 0 && (
+            <div className="blog-side-section">
+              <h2>Series</h2>
+              <div className="blog-series-list">
+                {seriesPosts.map((item, index) => (
+                  <Link
+                    key={item.slug}
+                    to={`/blog/${item.slug}`}
+                    className={item.slug === post.slug ? "is-current" : ""}
                   >
-                    {tag}
-                  </button>
+                    <span>{String(index + 1).padStart(2, "0")}</span>
+                    {item.title}
+                  </Link>
                 ))}
               </div>
-            )}
-            {/* Image  */}
-            {post.imageUrl && (
-              <motion.img
-                src={post.imageUrl}
-                alt={post.title}
-                className="mt-6 mb-0 mx-auto w-auto lg:h-[400px] rounded-lg shadow-lg"
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.5, delay: 0.4 }}
-              />
-            )}
-          </motion.div>
-        </motion.div>
-        <motion.div
-          className="blog-content prose prose-invert prose-lg max-w-none font-body text-gray-300 leading-relaxed"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.5 }}
-        >
-          <Content />
-          <Comments />
-        </motion.div>
-      </div>
+            </div>
+          )}
+
+          {relatedPosts.length > 0 && (
+            <div className="blog-side-section">
+              <h2>Read next</h2>
+              <div className="grid gap-3">
+                {relatedPosts.map((item) => (
+                  <SmallPostLink key={item.slug} post={item} />
+                ))}
+              </div>
+            </div>
+          )}
+
+        {(post.tags || []).length > 0 && (
+          <div className="blog-side-section">
+            <h2>Topics</h2>
+            <div className="flex flex-wrap gap-2">
+              {post.tags.map((tag) => (
+                <button
+                  key={tag}
+                  onClick={() => navigate(`/blog?tag=${tag}`)}
+                  className="chip"
+                >
+                  {tag}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </aside>
     </main>
   );
 };

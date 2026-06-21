@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { animated, useSpring as useReactSpring } from "@react-spring/web"; // For cursor
 
+const AnimatedDiv = animated.div;
+
 const CursorFollowerContext = createContext(null);
 export const CursorFollowerProvider = ({ children }) => {
   const [start, setStart] = useState(false);
@@ -48,15 +50,15 @@ export const CursorFollower = () => {
   });
   return (
     start && (
-      <animated.div
+      <AnimatedDiv
         style={wrapperStyles}
         className="pointer-events-none fixed left-0 top-0 z-[140] hidden h-8 w-8 select-none md:block"
       >
-        <animated.div
+        <AnimatedDiv
           style={circleStyles}
           className={`${click ? "bg-opacity-50" : "bg-opacity-0"} h-full w-full rounded-full bg-yellow-500 ring-2 ring-yellow-500 transition-colors duration-200`}
-        ></animated.div>
-      </animated.div>
+        ></AnimatedDiv>
+      </AnimatedDiv>
     )
   );
 };

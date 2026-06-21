@@ -29,33 +29,8 @@ const BarChart = ({ chartData, options }) => {
   }, [chartData, options]);
 
   return (
-    <div className="chart-container relative w-full h-[350px] max-w-xl mx-auto">
+    <div className="zyg-chart">
       <canvas ref={chartRef}></canvas>
-    </div>
-  );
-};
-
-// Reusable CodeBlock Component
-const CodeBlock = ({ title, language, code }) => {
-  const codeRef = useRef(null);
-
-  useEffect(() => {
-    if (codeRef.current && window.hljs) {
-      window.hljs.highlightElement(codeRef.current);
-    }
-  }, [code]);
-
-  const accentClass =
-    language === "python" ? "text-accent-python" : "text-accent-zig";
-
-  return (
-    <div className="bg-subtle p-4 rounded-md">
-      <h5 className={`font-semibold ${accentClass} mb-2`}>{title}</h5>
-      <pre className="text-xs bg-slate-950 rounded-md overflow-x-auto">
-        <code ref={codeRef} className={`language-${language}`}>
-          {code}
-        </code>
-      </pre>
     </div>
   );
 };
@@ -359,33 +334,6 @@ const data = [
 ];
 
 export function Blog() {
-  useEffect(() => {
-    // This is a workaround because direct imports are failing in this environment.
-    // In a real build setup (like Next.js/Vite), you'd use direct imports.
-    const loadScript = (src, onLoad) => {
-      const script = document.createElement("script");
-      script.src = src;
-      script.onload = onLoad;
-      document.body.appendChild(script);
-    };
-
-    if (!window.hljs) {
-      loadScript(
-        "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js",
-        () => {
-          loadScript(
-            "https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/zig.min.js",
-            () => {
-              window.hljs.highlightAll();
-            },
-          );
-        },
-      );
-    } else {
-      window.hljs.highlightAll();
-    }
-  }, []);
-
   // Chart.js Configuration
   const commonTooltipCallback = {
     title: function (tooltipItems) {
@@ -403,23 +351,23 @@ export function Blog() {
       tooltip: {
         callbacks: commonTooltipCallback,
         backgroundColor: "#1E293B",
-        titleColor: "#F1F5F9",
-        bodyColor: "#CBD5E1",
+        titleColor: "#EDF4EF",
+        bodyColor: "#AAB9B2",
         padding: 10,
         cornerRadius: 4,
-        borderColor: "#334155",
+        borderColor: "rgba(159, 184, 174, 0.18)",
         borderWidth: 1,
       },
     },
     scales: {
       y: {
         beginAtZero: true,
-        grid: { color: "rgba(255, 255, 255, 0.1)" },
-        ticks: { color: "#94A3B8", font: { weight: "600" } },
+        grid: { color: "rgba(159, 184, 174, 0.12)" },
+        ticks: { color: "#AAB9B2", font: { weight: "600" } },
       },
       x: {
         grid: { display: false },
-        ticks: { color: "#94A3B8", font: { weight: "600" } },
+        ticks: { color: "#AAB9B2", font: { weight: "600" } },
       },
     },
   };
@@ -430,8 +378,8 @@ export function Blog() {
       {
         label: "GFLOP/s",
         data: [0.00263464550290962, 8.997371987654624],
-        backgroundColor: ["#4B5563", "#F97316"],
-        borderColor: ["#6B7280", "#FB923C"],
+        backgroundColor: ["rgba(159, 184, 174, 0.22)", "#7CF7C8"],
+        borderColor: ["rgba(159, 184, 174, 0.35)", "#7CF7C8"],
         borderWidth: 2,
         borderRadius: 4,
       },
@@ -444,8 +392,8 @@ export function Blog() {
       {
         label: "Time (s)",
         data: [1.428470553997613, 0.07604879399877973],
-        backgroundColor: ["#4B5563", "#F97316"],
-        borderColor: ["#6B7280", "#FB923C"],
+        backgroundColor: ["rgba(159, 184, 174, 0.22)", "#7CF7C8"],
+        borderColor: ["rgba(159, 184, 174, 0.35)", "#7CF7C8"],
         borderWidth: 2,
         borderRadius: 4,
       },
@@ -454,16 +402,16 @@ export function Blog() {
 
   const TranslationBlock = ({ title, python, zig, explanation }) => {
     return (
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        <div className="lg:col-span-6">
+      <div className="zyg-translation-block">
+        <div className="zyg-translation-side">
           <CodeWindow title="Python" language="python" code={python} />
           <CodeWindow title="Zig" language="zig" code={zig} />
         </div>
 
-        <Card className="lg:col-span-6 h-full">
-          <h5 className="font-semibold text-highlight mb-2">{title}</h5>
+        <Card className="zyg-translation-side">
+          <h5 className="zyg-block-title">{title}</h5>
           <div
-            className="leading-relaxed space-y-2 [&_ul]:list-disc [&_ul]:pl-5 [&_li]:mb-1 [&_code]:bg-slate-700/50 [&_code]:text-amber-300 [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded-sm [&_code]:font-mono"
+            className="zyg-explanation"
             dangerouslySetInnerHTML={{ __html: explanation }}
           />
         </Card>
@@ -471,55 +419,33 @@ export function Blog() {
     );
   };
   return (
-    <div className="font-sans antialiased">
-      <style>
-        {`.text-accent-python { color: #FACC15; }
-                .text-accent-zig { color: #F97316; }
-                .bg-card { background-color: #0000002b; }
-                .bg-subtle { background-color: #334155; }
-                .text-highlight { color: #60A5FA; }
-                .border-highlight { border-color: #60A5FA; }
-                .flow-arrow { animation: pulse-arrow 2s infinite; }
-                @keyframes pulse-arrow {
-                    0%, 100% { opacity: 0.5; transform: scale(1); }
-                    50% { opacity: 1; transform: scale(1.05); }
-                }
-                .hljs { background: #020617 !important; color: #E2E8F0 !important; }
-                `}
-      </style>
-      {/* Table of Contents */}
+    <div className="zyg-blog">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <nav className="text-center">
-          <ul className="flex flex-col sm:flex-row justify-center space-y-2 sm:space-y-0 sm:space-x-6">
+        <nav className="zyg-section-nav">
+          <ul>
             <li>
-              <a href="#problem" className="text-white hover:text-yellow-300">
+              <a href="#problem">
                 Problem
               </a>
             </li>
             <li>
-              <a href="#solution" className="text-white hover:text-yellow-300">
+              <a href="#solution">
                 Solution
               </a>
             </li>
             <li>
-              <a
-                href="#translation"
-                className="text-white hover:text-yellow-300"
-              >
+              <a href="#translation">
                 Translation
               </a>
             </li>
             <li>
-              <a
-                href="#performance"
-                className="text-white hover:text-yellow-300"
-              >
+              <a href="#performance">
                 Performance
               </a>
             </li>
 
             <li>
-              <a href="#github" className="text-white hover:text-yellow-300">
+              <a href="#github">
                 GitHub
               </a>
             </li>
@@ -527,7 +453,7 @@ export function Blog() {
         </nav>
       </div>
 
-      <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-12">
+      <div className="zyg-body">
         <section id="problem">
           <p>
             I recently switched to Zig for pretty much anything that required
@@ -550,13 +476,13 @@ export function Blog() {
             turn it into Zig? At the time, performance was never on my mind. I
             just thought it was a fun idea to do.{" "}
           </p>
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold">The Performance Problem</h2>
-            <p className="mt-2 text-md ">
+          <div className="zyg-section-heading">
+            <h2>The Performance Problem</h2>
+            <p>
               Why leave the Python ecosystem just for speed?
             </p>
           </div>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+          <div className="zyg-two-column">
             <AnimateOnScroll>
               <Card>
                 <h3>The Traditional Path: C Extensions</h3>
@@ -565,31 +491,25 @@ export function Blog() {
                   significant friction, turning a simple optimization into a
                   major project.
                 </p>
-                <div className="space-y-3">
-                  <div className="flex items-center p-3 bg-slate-900/50 rounded-md">
-                    <span className="text-red-400 mr-4 text-lg font-bold">
-                      1
-                    </span>
+                <div className="zyg-step-list">
+                  <div className="zyg-step">
+                    <span>1</span>
                     <div>
                       <span className="font-semibold">Manual C Coding:</span>{" "}
                       Manage memory and types by hand.
                     </div>
                   </div>
-                  <div className="text-center text-2xl font-bold ">&darr;</div>
-                  <div className="flex items-center p-3 bg-slate-900/50 rounded-md">
-                    <span className="text-red-400 mr-4 text-lg font-bold">
-                      2
-                    </span>
+                  <div className="zyg-step-arrow">&darr;</div>
+                  <div className="zyg-step">
+                    <span>2</span>
                     <div>
                       <span className="font-semibold">FFI Boilerplate:</span>{" "}
                       Write Python/C API bindings.
                     </div>
                   </div>
-                  <div className="text-center text-2xl font-bold ">&darr;</div>
-                  <div className="flex items-center p-3 bg-slate-900/50 rounded-md">
-                    <span className="text-red-400 mr-4 text-lg font-bold">
-                      3
-                    </span>
+                  <div className="zyg-step-arrow">&darr;</div>
+                  <div className="zyg-step">
+                    <span>3</span>
                     <div>
                       <span className="font-semibold">
                         Build Configuration:
@@ -597,12 +517,10 @@ export function Blog() {
                       Set up `setup.py` or Makefiles.
                     </div>
                   </div>
-                  <div className="text-center text-2xl font-bold ">&darr;</div>
-                  <div className="flex items-center p-3 bg-slate-900/50 rounded-md">
-                    <span className="text-red-400 mr-4 text-lg font-bold">
-                      4
-                    </span>
-                    <div className="">
+                  <div className="zyg-step-arrow">&darr;</div>
+                  <div className="zyg-step">
+                    <span>4</span>
+                    <div>
                       <span className="font-semibold">Compile & Link:</span>{" "}
                       Generate the shared library.
                     </div>
@@ -618,8 +536,8 @@ export function Blog() {
                   performance of a compiled language like Zig without disrupting
                   the Python workflow?
                 </p>
-                <div className="p-6 border-2 border-dashed border-highlight rounded-lg text-center bg-sky-900/20">
-                  <p className="text-xl md:text-2xl font-semibold text-highlight">
+                <div className="zyg-question-card">
+                  <p>
                     What if a decorator could automatically transpile Python to
                     high-performance Zig?
                   </p>
@@ -629,46 +547,46 @@ export function Blog() {
           </div>
         </section>
         <section id="solution">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold ">
+          <div className="zyg-section-heading">
+            <h2>
               The Zyg Transpilation Pipeline
             </h2>
-            <p className="mt-2 text-md ">
+            <p>
               I've seen `triton` do something similar, so I thought why not.
               `zyg` intercepts Python code at runtime, converting it into a
               compiled library on the fly.
             </p>
           </div>
           <Card>
-            <div className="flex flex-col md:flex-row items-stretch justify-between gap-4 text-center">
-              <div className="flex-1 p-4 bg-subtle rounded-lg flex items-center justify-center min-h-[60px]">
-                <span className="font-mono text-sm text-accent-python font-semibold">
+            <div className="zyg-pipeline">
+              <div className="zyg-pipeline-step">
+                <span>
                   <code>@zig def my_func(...)</code>
                 </span>
               </div>
-              <div className="flex items-center justify-center text-3xl font-light  mx-4 flow-arrow">
+              <div className="zyg-pipeline-arrow">
                 &rarr;
               </div>
-              <div className="flex-1 p-4 bg-subtle rounded-lg flex items-center justify-center">
-                <span className="font-semibold ">Python AST Parsing</span>
+              <div className="zyg-pipeline-step">
+                <span>Python AST Parsing</span>
               </div>
-              <div className="flex items-center justify-center text-3xl font-light  mx-4 flow-arrow">
+              <div className="zyg-pipeline-arrow">
                 &rarr;
               </div>
-              <div className="flex-1 p-4 bg-subtle rounded-lg flex items-center justify-center">
-                <span className="font-semibold ">Zig Code Generation</span>
+              <div className="zyg-pipeline-step">
+                <span>Zig Code Generation</span>
               </div>
-              <div className="flex items-center justify-center text-3xl font-light  mx-4 flow-arrow">
+              <div className="zyg-pipeline-arrow">
                 &rarr;
               </div>
-              <div className="flex-1 p-4 bg-subtle rounded-lg flex items-center justify-center">
-                <span className="font-semibold ">Dynamic Compilation</span>
+              <div className="zyg-pipeline-step">
+                <span>Dynamic Compilation</span>
               </div>
-              <div className="flex items-center justify-center text-3xl font-light  mx-4 flow-arrow">
+              <div className="zyg-pipeline-arrow">
                 &rarr;
               </div>
-              <div className="flex-1 p-4 bg-subtle rounded-lg flex items-center justify-center">
-                <span className="font-mono text-accent-zig font-semibold">
+              <div className="zyg-pipeline-step zyg-pipeline-step-final">
+                <span>
                   High-Speed Execution
                 </span>
               </div>
@@ -676,17 +594,16 @@ export function Blog() {
           </Card>
         </section>
         <section id="translation" className="mb-24">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold">Translation Deep Dive</h2>
-            <p className="mt-2 text-md max-w-3xl mx-auto ">
+          <div className="zyg-section-heading">
+            <h2>Translation Deep Dive</h2>
+            <p>
               How do we translate a high-level, dynamic language like Python to
               a low-level, static one like Zig? The key is using Python's type
               hints to provide the necessary information. Let’s look at some
               examples to see how this works in practice.
             </p>
-            {/* warning block */}
-            <div className="bg-yellow-100 text-yellow-800 p-4 rounded-lg mb-8">
-              <div className="items-center">
+            <div className="zyg-warning">
+              <div>
                 <span className="font-semibold">Warning: </span>
                 All the design decisions on syntax and semantics were chosen on
                 a whim. There was no deep thought or analysis behind them. And I
@@ -705,7 +622,7 @@ export function Blog() {
               <a href="#performance">Performance Benchmarks</a>.
             </h4>
           </div>
-          <div className="space-y-12">
+          <div className="zyg-translation-list">
             {data.map((item, index) => (
               <TranslationBlock
                 key={index}
@@ -717,55 +634,48 @@ export function Blog() {
             ))}
           </div>
 
-          {/* Performance Benchmarks */}
-          <div className="text-center mt-24 mb-12">
-            <h2 className="text-3xl font-bold" id="performance">
+          <div className="zyg-benchmark-section">
+            <div className="zyg-section-heading">
+              <h2 id="performance">
               Performance Benchmarks
-            </h2>
-            <p className="mt-2 text-md max-w-3xl mx-auto ">
+              </h2>
+              <p>
               Let’s see how Zyg performs compared to pure Python
               implementations.
-            </p>
+              </p>
+            </div>
 
-            {/* Matmul */}
-            <div className="flex flex-wrap md:flex-nowrap gap-8 justify-center">
-              <div className="w-full md:w-1/2">
-                <Card>
-                  <h3 className="text-xl font-semibold mb-4 text-center">
+            <div className="zyg-benchmark-grid">
+              <Card className="zyg-benchmark-card">
+                  <h3>
                     MatMul GFLOP/s (2 128x128 Matrices)
                   </h3>
 
-                  {/*~3400x faster*/}
-                  <div className="text-center mb-4">
-                    <span className="text-2xl font-bold text-accent-zig">
+                  <div className="zyg-benchmark-stat">
+                    <span>
                       3,400x
                     </span>{" "}
                     faster than pure Python
                   </div>
                   <BarChart chartData={matmulData} options={chartOptions} />
-                </Card>
-              </div>
-              <div className="w-full md:w-1/2">
-                <Card>
-                  <h3 className="text-xl font-semibold mb-4 text-center">
+              </Card>
+              <Card className="zyg-benchmark-card">
+                  <h3>
                     NSieve Time (s)
                   </h3>
-                  <div className="text-center mb-4">
-                    <span className="text-2xl font-bold text-accent-zig">
+                  <div className="zyg-benchmark-stat">
+                    <span>
                       19x
                     </span>{" "}
                     faster than pure Python
                   </div>
                   <BarChart chartData={nsieveData} options={chartOptions} />
-                </Card>
-              </div>
+              </Card>
             </div>
-            <h4 className="text-md  mt-4">
+            <h4>
               You can find the full benchmark code in the repo.
             </h4>
-            {/* Link to the repo, with github repo viz */}
-            {/* https://github.com/theunnecessarythings/zyg */}
-            <div className="w-[200px] m-auto">
+            <div className="blog-repo-card">
               <RepoCard username="theunnecessarythings" repository="zyg" />
             </div>
           </div>

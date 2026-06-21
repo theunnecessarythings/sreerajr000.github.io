@@ -12,7 +12,7 @@ import {CodeWindow, ChecklistItem} from '../../components/ui.jsx'
 import RepoCard from "react-repo-card";
 
 
-  <div className="w-[200px] m-auto my-6">
+  <div className="project-repo-card">
     <RepoCard username="theunnecessarythings" repository="tch-models" />
   </div>
 
@@ -107,25 +107,25 @@ This repository includes an example to evaluate the performance of the models on
 ## Performance
 
 The following table shows the Top-1 accuracy of the models on the ImageNet validation set, as compared to the original TorchVision implementations.
-      <div className="container mx-auto">
-        {/* Table container with shadow and rounded corners */}
-        <div className="overflow-x-auto shadow-2xl shadow-cyan-500/10 rounded-lg">
-          <table className="w-full text-left">
-            {/* Table Header */}
-            <thead className="text-gray-300 uppercase bg-gray-800">
+      <div className="project-table-wrap">
+        <div className="project-table-scroll">
+          <table className="project-metric-table">
+            <thead>
               <tr>
-                <th scope="col" className="p-4 ">
+                <th scope="col">
                   Model
                 </th>
-                <th scope="col" className="p-4  text-center tracking-wider">
+                <th scope="col" className="project-table-number">
                   tch-rs (%)
                 </th>
-                <th scope="col" className="p-4  text-center tracking-wider">
+                <th scope="col" className="project-table-number">
                   TorchVision (%)
+                </th>
+                <th scope="col" className="project-table-number">
+                  Delta
                 </th>
               </tr>
             </thead>
-            {/* Table Body */}
             <tbody>
               { [
   { name: 'AlexNet', tchRs: 56.53, torchVision: 56.52 },
@@ -176,18 +176,25 @@ The following table shows the Top-1 accuracy of the models on the ImageNet valid
   { name: 'WideResNet50_2', tchRs: 78.44, torchVision: 78.47 },
   { name: 'WideResNet101_2', tchRs: 78.84, torchVision: 78.85 },
   { name: 'ViTB16', tchRs: 81.33, torchVision: 81.07 },
-].map((model, index) => (
-                <tr
-                  key={model.name}
-                  className="border-b border-gray-700 bg-gray-800/50 hover:bg-gray-700/60 transition-colors duration-200"
-                >
-                  <th scope="row" className="p-4 font-medium text-white whitespace-nowrap">
-                    {model.name}
-                  </th>
-                  <td className="p-4 text-center text-cyan-400">{model.tchRs.toFixed(2)}</td>
-                  <td className="p-4 text-center text-green-400">{model.torchVision.toFixed(2)}</td>
-                </tr>
-              ))}
+].map((model) => {
+                const delta = model.tchRs - model.torchVision;
+                const deltaLabel = `${delta > 0 ? '+' : ''}${delta.toFixed(2)}`;
+                const parity = Math.max(8, 100 - Math.min(Math.abs(delta) * 18, 62));
+
+                return (
+                  <tr key={model.name}>
+                    <th scope="row">
+                      {model.name}
+                    </th>
+                    <td className="project-table-number project-table-number-a">{model.tchRs.toFixed(2)}</td>
+                    <td className="project-table-number project-table-number-b">{model.torchVision.toFixed(2)}</td>
+                    <td className={`project-table-number project-table-delta ${Math.abs(delta) < 0.05 ? 'project-table-delta-even' : delta > 0 ? 'project-table-delta-positive' : 'project-table-delta-negative'}`}>
+                      <span>{deltaLabel}</span>
+                      <i style={{"--parity": `${parity}%`}} />
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

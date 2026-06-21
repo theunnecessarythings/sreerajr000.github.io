@@ -13,7 +13,7 @@ import {App, part6} from './llm-ptx.jsx'
 import {CodeWindow} from '../../components/ui.jsx'
 import RepoCard from "react-repo-card";
 
-<div className="w-[200px] m-auto my-4">
+<div className="blog-repo-card">
   <RepoCard username="theunnecessarythings" repository="llm-ptx" />
 </div>
 
@@ -21,7 +21,7 @@ This is the big one. The attention mechanism is what makes a transformer a trans
 
 The CUDA C++ reference we have for this doesn't use shared memory. Instead, it orchestrates a complex dance where each thread block handles a single attention head for a single batch item, and each thread within that block is responsible for a single query token. This kernel is less about inter-thread communication and more about careful pointer arithmetic and managing the multiple stages of the calculation.
 
-<div className="w-5/6 m-auto">
+<div className="blog-code-wrap">
 <CodeWindow title="CUDA C++ Kernel" language="cpp" code={`__global__ void attention_fwd_kernel(float *out, float *preatt, float *att,
                                      const float *inp, int B, int T, int C,
                                      int NH) {
@@ -110,7 +110,7 @@ By now, you should be familiar with every single concept that's being used above
 
 Getting this logic into PTX was a true test of everything I'd learned. It combined the memory access patterns from the encoder, the mathematical operations from GELU, and the normalization logic from Softmax, all within a more complex loop structure. The C++ host code to launch it, however, as always the same.
 
-<div className="w-5/6 m-auto">
+<div className="blog-code-wrap">
 <CodeWindow title="C++ Runner" language="cpp" code={`void attention_forward(float *out, float *preatt, float *att, const float *inp,
                        int B, int T, int C, int NH, cudaStream_t stream = 0) {
     static CUmodule module = nullptr;
@@ -138,7 +138,7 @@ Getting this logic into PTX was a true test of everything I'd learned. It combin
 
 With the attention mechanism in place, only one major component is left: the feed-forward network, which is essentially a pair of large matrix multiplications. It's time to face the final boss: writing a performant GEMM (General Matrix-Matrix Multiplication) kernel in PTX.
 
-<div className="flex justify-between mt-8 pt-4 border-t border-gray-700">
+<div className="blog-post-nav">
   <a href="/blog/llm-ptx-05" className="text-blue-400 hover:text-blue-300 font-semibold">
     ← Previous: The Softmax Kernel
   </a>

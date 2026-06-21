@@ -17,7 +17,7 @@ Zig bindings for the C++ api of PyTorch.
 > The code is crap, JUST DON'T USE IT. One would also call it an `alpha` version.
 > I AM NOT RESPONSIBLE FOR ANY DAMAGE CAUSED BY THIS CODE. THAT INCLUDES EMOTIONAL ONES TOO.
             
-            <div className="w-[200px] m-auto">
+            <div className="project-repo-card">
               <RepoCard username="theunnecessarythings" repository="torch-zig" />
             </div>
 
@@ -25,7 +25,7 @@ Zig bindings for the C++ api of PyTorch.
 Now that you have been warned, here is how you can use it:
 
 To build the library, you need to have Zig installed. Then you can run the following command:
-<div className="w-1/2">
+<div className="project-code-wrap">
     <CodeWindow  title="Usage" language="bash" code={`zig build lib # Builds the C++ bindings to a static library, Only needs to be run once
 zig build run # Runs the test main program 
 zig build -Dexample=mnist_train run # Runs the mnist training example`} />
@@ -133,7 +133,7 @@ You can use `NoGradGuard` to disable gradient computation. Here is how you can u
 
 ## Available Neural Network Layers
 
-  <div className="max-w-md mx-auto">
+  <div className="project-checklist-wrap">
     <ul className="space-y-3">
       {[
   { text: 'Identity → <code>torch.linear.Identity</code>', checked: true },
@@ -187,7 +187,7 @@ try _alexnet.base_module.loadFromSafetensors(weights);
 For loading from `safetensors` I have implemented a basic safetensors reader in zig. It's working so far, so I am happy with it. If it breaks, your fault. Deal with it. (Or open an issue)
 
 ### Implemented Vision Models 
-  <div className="max-w-md mx-auto ">
+  <div className="project-checklist-wrap">
     <ul className="space-y-3">
       { [
   { text: 'Alexnet', checked: true },
