@@ -12,6 +12,7 @@ import {
 } from "./components/publications";
 import { ProjectsPage, ProjectDetailPage } from "./components/projects";
 import { GalleryPage } from "./components/gallery";
+import { HiddenPage } from "./components/hidden";
 import { galleryData } from "./gallery_data.jsx";
 
 const navItems = [
@@ -147,6 +148,7 @@ export default function App() {
             path="gallery"
             element={<GalleryPage onSelectImage={setFullscreenImage} />}
           />
+          <Route path="hidden" element={<HiddenPage />} />
         </Route>
       </Routes>
     </div>

@@ -1651,16 +1651,17 @@ a.meter-row {
   justify-content: space-between;
   gap: 1rem;
   border-bottom: 1px solid var(--border-soft);
-  padding: 0.65rem 0.9rem;
+  padding: 0.5rem 0.8rem;
 }
 
 .code-window-header p {
   color: var(--text-subtle);
   font-family: var(--mono);
-  font-size: 0.68rem;
+  font-size: 0.65rem;
   font-weight: 750;
   letter-spacing: 0.08em;
-  margin: 0;
+  margin: 0 !important;
+  line-height: 1 !important;
   text-transform: uppercase;
 }
 
@@ -2994,6 +2995,57 @@ a.meter-row {
   margin: 1.5rem 0;
 }
 
+.hidden-report {
+  font-size: 0.94rem;
+}
+
+.hidden-report-title {
+  font-size: clamp(2rem, 5.2vw, 4.25rem);
+}
+
+.hidden-section-title {
+  font-size: clamp(1.12rem, 1.7vw, 1.45rem);
+}
+
+.hidden-report .project-table-wrap {
+  margin: 1.15rem 0;
+}
+
+.hidden-report .project-metric-table {
+  min-width: 48rem;
+}
+
+.hidden-report .project-metric-table th,
+.hidden-report .project-metric-table td {
+  padding: 0.58rem 0.75rem;
+}
+
+.hidden-report .project-metric-table thead {
+  font-size: 0.61rem;
+}
+
+.hidden-report .project-table-number {
+  font-size: 0.78rem;
+}
+
+.hidden-report .machine-label,
+.hidden-report .warning-signal {
+  font-size: 0.62rem;
+}
+
+.hidden-report .signal {
+  font-size: 0.7rem;
+}
+
+.hidden-report .status-pill {
+  font-size: 0.58rem;
+  padding: 0.34rem 0.44rem;
+}
+
+.hidden-report .module-log-line {
+  font-size: 0.66rem;
+}
+
 .project-citation-card {
   display: block;
   border: 1px solid var(--border-soft);
@@ -3609,4 +3661,22 @@ a.meter-row {
     filter: none;
     transform: none;
   }
+}
+
+/* CuTe RMSNorm custom animations */
+@keyframes dash {
+  from {
+    stroke-dashoffset: 20;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.animate-\[dash_1s_linear_infinite\] {
+  animation: dash 1s linear infinite;
+}
+
+.animate-\[dash_1s_linear_reverse_infinite\] {
+  animation: dash 1s linear reverse infinite;
 }

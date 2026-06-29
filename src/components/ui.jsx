@@ -198,9 +198,9 @@ export const CodeWindow = ({ className = "", code, language, title }) => {
     >
       <div className="code-window-header">
         <div className="flex items-center gap-2">
-          <div className="h-2.5 w-2.5 rounded-full bg-[var(--danger)]"></div>
-          <div className="h-2.5 w-2.5 rounded-full bg-[var(--accent-strong)]"></div>
-          <div className="h-2.5 w-2.5 rounded-full bg-[var(--accent)]"></div>
+          <div className="h-2 w-2 rounded-full bg-[var(--danger)]"></div>
+          <div className="h-2 w-2 rounded-full bg-[var(--accent-strong)]"></div>
+          <div className="h-2 w-2 rounded-full bg-[var(--accent)]"></div>
         </div>
         {title && <p>{title}</p>}
       </div>
