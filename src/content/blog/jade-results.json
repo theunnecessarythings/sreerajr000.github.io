@@ -1,0 +1,864 @@
+{
+  "index": 53.16,
+  "scores": {
+    "balanced_skill": 53.16,
+    "balanced_raw": 64.52,
+    "breadth_skill": 51.97
+  },
+  "latency": {
+    "median": 100.3,
+    "p95": 716.9,
+    "mean": 252.8
+  },
+  "areas": [
+    {
+      "id": "knowledge",
+      "label": "Knowledge & Reasoning",
+      "raw": 0.5267,
+      "skill": 0.4071,
+      "coverage": 0.9998,
+      "n": 10,
+      "benchmarks": [
+        25,
+        30,
+        31,
+        32,
+        33,
+        43,
+        44,
+        45,
+        57,
+        58
+      ]
+    },
+    {
+      "id": "language",
+      "label": "Language Understanding",
+      "raw": 0.7115,
+      "skill": 0.5762,
+      "coverage": 1.0,
+      "n": 10,
+      "benchmarks": [
+        11,
+        12,
+        28,
+        29,
+        38,
+        39,
+        40,
+        41,
+        42,
+        59
+      ]
+    },
+    {
+      "id": "retrieval",
+      "label": "Retrieval & Classification",
+      "raw": 0.6753,
+      "skill": 0.544,
+      "coverage": 1.0,
+      "n": 6,
+      "benchmarks": [
+        4,
+        5,
+        36,
+        37,
+        56,
+        61
+      ]
+    },
+    {
+      "id": "tools",
+      "label": "Tools & Automation",
+      "raw": 0.7602,
+      "skill": 0.7318,
+      "coverage": 0.9986,
+      "n": 5,
+      "benchmarks": [
+        1,
+        2,
+        3,
+        9,
+        62
+      ]
+    },
+    {
+      "id": "arts",
+      "label": "Arts & Human Taste",
+      "raw": 0.51,
+      "skill": 0.3476,
+      "coverage": 0.9983,
+      "n": 7,
+      "benchmarks": [
+        20,
+        21,
+        22,
+        23,
+        48,
+        50,
+        64
+      ]
+    }
+  ],
+  "benchmarks": [
+    {
+      "id": 1,
+      "name": "BFCL",
+      "area": "tools",
+      "metric": "case exact accuracy",
+      "native": 0.9699,
+      "raw": 0.9699,
+      "skill": 0.9594,
+      "requests": 1694,
+      "unsupported": 0,
+      "latency": 294.1,
+      "counted": true
+    },
+    {
+      "id": 2,
+      "name": "ToolRet",
+      "area": "tools",
+      "metric": "nDCG@10",
+      "native": 0.6462,
+      "raw": 0.6443,
+      "skill": 0.5893,
+      "requests": 685,
+      "unsupported": 2,
+      "latency": 2358.7,
+      "counted": true
+    },
+    {
+      "id": 3,
+      "name": "API-Bank",
+      "area": "tools",
+      "metric": "accuracy",
+      "native": 0.834,
+      "raw": 0.8307,
+      "skill": 0.8275,
+      "requests": 508,
+      "unsupported": 2,
+      "latency": 1494.3,
+      "counted": true
+    },
+    {
+      "id": 4,
+      "name": "BANKING77",
+      "area": "retrieval",
+      "metric": "macro-F1",
+      "native": 0.7854,
+      "raw": 0.7854,
+      "skill": 0.7826,
+      "requests": 3080,
+      "unsupported": 0,
+      "latency": 264.2,
+      "counted": true
+    },
+    {
+      "id": 5,
+      "name": "CLINC150+OOS",
+      "area": "retrieval",
+      "metric": "macro-F1",
+      "native": 0.8759,
+      "raw": 0.8759,
+      "skill": 0.8752,
+      "requests": 5500,
+      "unsupported": 0,
+      "latency": 398.3,
+      "counted": true
+    },
+    {
+      "id": 6,
+      "name": "RouterBench",
+      "area": "outside",
+      "metric": "selected quality (quality objective)",
+      "native": 0.7985,
+      "raw": 0.7985,
+      "skill": 0.5275,
+      "requests": 10000,
+      "unsupported": 0,
+      "latency": 629.4,
+      "counted": false
+    },
+    {
+      "id": 9,
+      "name": "Home appliance simulator",
+      "area": "tools",
+      "metric": "case exact accuracy",
+      "native": 0.5455,
+      "raw": 0.5455,
+      "skill": 0.5455,
+      "requests": 88,
+      "unsupported": 0,
+      "latency": 1221.3,
+      "counted": true
+    },
+    {
+      "id": 10,
+      "name": "SGD/SGD-X",
+      "area": "outside",
+      "metric": "macro-F1",
+      "native": 0.3485,
+      "raw": 0.3485,
+      "skill": 0.0,
+      "requests": 2500,
+      "unsupported": 0,
+      "latency": 286.6,
+      "counted": false
+    },
+    {
+      "id": 11,
+      "name": "ContractNLI",
+      "area": "language",
+      "metric": "macro-F1",
+      "native": 0.7464,
+      "raw": 0.7464,
+      "skill": 0.6332,
+      "requests": 123,
+      "unsupported": 0,
+      "latency": 1920.9,
+      "counted": true
+    },
+    {
+      "id": 12,
+      "name": "ANLI",
+      "area": "language",
+      "metric": "macro-F1",
+      "native": 0.6421,
+      "raw": 0.6421,
+      "skill": 0.4639,
+      "requests": 3200,
+      "unsupported": 0,
+      "latency": 74.5,
+      "counted": true
+    },
+    {
+      "id": 20,
+      "name": "BPoMP",
+      "area": "arts",
+      "metric": "accuracy",
+      "native": 0.9174,
+      "raw": 0.9198,
+      "skill": 0.8397,
+      "requests": 5000,
+      "unsupported": 0,
+      "latency": 74.5,
+      "counted": true
+    },
+    {
+      "id": 21,
+      "name": "Humicroedit",
+      "area": "arts",
+      "metric": "accuracy",
+      "native": 0.6202,
+      "raw": 0.6202,
+      "skill": 0.2405,
+      "requests": 2628,
+      "unsupported": 0,
+      "latency": 68.3,
+      "counted": true
+    },
+    {
+      "id": 22,
+      "name": "POP909-CL",
+      "area": "arts",
+      "metric": "accuracy",
+      "native": 0.198,
+      "raw": 0.1952,
+      "skill": 0.1889,
+      "requests": 2000,
+      "unsupported": 25,
+      "latency": 1349.7,
+      "counted": true
+    },
+    {
+      "id": 23,
+      "name": "cfcolor",
+      "area": "arts",
+      "metric": "accuracy",
+      "native": 0.629,
+      "raw": 0.62,
+      "skill": 0.2399,
+      "requests": 5000,
+      "unsupported": 0,
+      "latency": 139.1,
+      "counted": true
+    },
+    {
+      "id": 24,
+      "name": "MMLU",
+      "area": "outside",
+      "metric": "accuracy",
+      "native": 0.8353,
+      "raw": 0.8353,
+      "skill": 0.7804,
+      "requests": 14033,
+      "unsupported": 0,
+      "latency": 72.2,
+      "counted": false
+    },
+    {
+      "id": 25,
+      "name": "GPQA Diamond",
+      "area": "knowledge",
+      "metric": "accuracy",
+      "native": 0.4592,
+      "raw": 0.4592,
+      "skill": 0.2789,
+      "requests": 196,
+      "unsupported": 0,
+      "latency": 76.8,
+      "counted": true
+    },
+    {
+      "id": 26,
+      "name": "ARC-Easy",
+      "area": "outside",
+      "metric": "accuracy",
+      "native": 0.9903,
+      "raw": 0.9903,
+      "skill": 0.9871,
+      "requests": 2376,
+      "unsupported": 0,
+      "latency": 68.6,
+      "counted": false
+    },
+    {
+      "id": 27,
+      "name": "ARC-Challenge",
+      "area": "outside",
+      "metric": "accuracy",
+      "native": 0.9659,
+      "raw": 0.9659,
+      "skill": 0.9545,
+      "requests": 1172,
+      "unsupported": 0,
+      "latency": 71.4,
+      "counted": false
+    },
+    {
+      "id": 28,
+      "name": "WinoGrande",
+      "area": "language",
+      "metric": "accuracy",
+      "native": 0.8335,
+      "raw": 0.8335,
+      "skill": 0.667,
+      "requests": 1267,
+      "unsupported": 0,
+      "latency": 68.4,
+      "counted": true
+    },
+    {
+      "id": 29,
+      "name": "HellaSwag",
+      "area": "language",
+      "metric": "accuracy",
+      "native": 0.9451,
+      "raw": 0.9451,
+      "skill": 0.9268,
+      "requests": 10042,
+      "unsupported": 0,
+      "latency": 94.7,
+      "counted": true
+    },
+    {
+      "id": 30,
+      "name": "GSM8K",
+      "area": "knowledge",
+      "metric": "accuracy",
+      "native": 0.8624,
+      "raw": 0.8624,
+      "skill": 0.8301,
+      "requests": 2638,
+      "unsupported": 0,
+      "latency": 76.2,
+      "counted": true
+    },
+    {
+      "id": 31,
+      "name": "ChessBench",
+      "area": "knowledge",
+      "metric": "accuracy",
+      "native": 0.1652,
+      "raw": 0.1652,
+      "skill": 0.0908,
+      "requests": 5000,
+      "unsupported": 0,
+      "latency": 260.8,
+      "counted": true
+    },
+    {
+      "id": 32,
+      "name": "MuSR",
+      "area": "knowledge",
+      "metric": "accuracy",
+      "native": 0.629,
+      "raw": 0.629,
+      "skill": 0.4102,
+      "requests": 752,
+      "unsupported": 0,
+      "latency": 239.3,
+      "counted": true
+    },
+    {
+      "id": 33,
+      "name": "SATA-Bench",
+      "area": "knowledge",
+      "metric": "case exact accuracy",
+      "native": 0.2309,
+      "raw": 0.2309,
+      "skill": 0.2207,
+      "requests": 1650,
+      "unsupported": 0,
+      "latency": 622.5,
+      "counted": true
+    },
+    {
+      "id": 34,
+      "name": "SimpleBench",
+      "area": "outside",
+      "metric": "accuracy",
+      "native": 0.1,
+      "raw": 0.1,
+      "skill": 0.0,
+      "requests": 10,
+      "unsupported": 0,
+      "latency": 76.3,
+      "counted": false
+    },
+    {
+      "id": 36,
+      "name": "BRIGHT",
+      "area": "retrieval",
+      "metric": "nDCG@10",
+      "native": 0.4778,
+      "raw": 0.4778,
+      "skill": 0.4093,
+      "requests": 220,
+      "unsupported": 0,
+      "latency": 3563.9,
+      "counted": true
+    },
+    {
+      "id": 37,
+      "name": "Amazon ESCI",
+      "area": "retrieval",
+      "metric": "macro-F1",
+      "native": 0.5581,
+      "raw": 0.5581,
+      "skill": 0.4458,
+      "requests": 5000,
+      "unsupported": 0,
+      "latency": 111.0,
+      "counted": true
+    },
+    {
+      "id": 38,
+      "name": "ACOS",
+      "area": "language",
+      "metric": "per-review F1",
+      "native": 0.2684,
+      "raw": 0.2684,
+      "skill": 0.245,
+      "requests": 1565,
+      "unsupported": 0,
+      "latency": 2339.0,
+      "counted": true
+    },
+    {
+      "id": 39,
+      "name": "FinEntity",
+      "area": "language",
+      "metric": "macro-F1",
+      "native": 0.8794,
+      "raw": 0.8794,
+      "skill": 0.8226,
+      "requests": 979,
+      "unsupported": 0,
+      "latency": 150.5,
+      "counted": true
+    },
+    {
+      "id": 40,
+      "name": "iSarcasmEval",
+      "area": "language",
+      "metric": "Sarcasm F1 · track A, English",
+      "native": 0.6085,
+      "raw": 0.6085,
+      "skill": 0.4963,
+      "requests": 4600,
+      "unsupported": 0,
+      "latency": 69.7,
+      "counted": true
+    },
+    {
+      "id": 41,
+      "name": "VAST",
+      "area": "language",
+      "metric": "macro-F1",
+      "native": 0.6257,
+      "raw": 0.6257,
+      "skill": 0.4386,
+      "requests": 3006,
+      "unsupported": 0,
+      "latency": 76.6,
+      "counted": true
+    },
+    {
+      "id": 42,
+      "name": "NLI4CT",
+      "area": "language",
+      "metric": "macro-F1",
+      "native": 0.8389,
+      "raw": 0.8389,
+      "skill": 0.6866,
+      "requests": 5500,
+      "unsupported": 0,
+      "latency": 116.3,
+      "counted": true
+    },
+    {
+      "id": 43,
+      "name": "CRUXEval",
+      "area": "knowledge",
+      "metric": "accuracy",
+      "native": 0.693,
+      "raw": 0.693,
+      "skill": 0.5129,
+      "requests": 570,
+      "unsupported": 0,
+      "latency": 75.9,
+      "counted": true
+    },
+    {
+      "id": 44,
+      "name": "CLadder",
+      "area": "knowledge",
+      "metric": "accuracy",
+      "native": 0.7226,
+      "raw": 0.7226,
+      "skill": 0.4452,
+      "requests": 5000,
+      "unsupported": 0,
+      "latency": 76.9,
+      "counted": true
+    },
+    {
+      "id": 45,
+      "name": "HLE",
+      "area": "knowledge",
+      "metric": "accuracy",
+      "native": 0.096,
+      "raw": 0.0958,
+      "skill": 0.0,
+      "requests": 501,
+      "unsupported": 1,
+      "latency": 96.5,
+      "counted": true
+    },
+    {
+      "id": 48,
+      "name": "ForecastBench",
+      "area": "arts",
+      "metric": "Brier (lower is better)",
+      "native": 0.2157,
+      "raw": 0.1372,
+      "skill": 0.1372,
+      "requests": 10139,
+      "unsupported": 0,
+      "latency": 169.4,
+      "counted": true
+    },
+    {
+      "id": 50,
+      "name": "Habermas Machine",
+      "area": "arts",
+      "metric": "accuracy",
+      "native": 0.4493,
+      "raw": 0.4493,
+      "skill": 0.2007,
+      "requests": 1676,
+      "unsupported": 0,
+      "latency": 258.7,
+      "counted": true
+    },
+    {
+      "id": 56,
+      "name": "PhishNChips phishing decisions",
+      "area": "retrieval",
+      "metric": "accuracy",
+      "native": 0.5645,
+      "raw": 0.5645,
+      "skill": 0.129,
+      "requests": 2000,
+      "unsupported": 0,
+      "latency": 514.8,
+      "counted": true
+    },
+    {
+      "id": 57,
+      "name": "MMLU-Pro",
+      "area": "knowledge",
+      "metric": "accuracy",
+      "native": 0.6419,
+      "raw": 0.6419,
+      "skill": 0.5972,
+      "requests": 12032,
+      "unsupported": 0,
+      "latency": 79.1,
+      "counted": true
+    },
+    {
+      "id": 58,
+      "name": "BBH fixed-option tasks",
+      "area": "knowledge",
+      "metric": "accuracy",
+      "native": 0.7904,
+      "raw": 0.7904,
+      "skill": 0.6962,
+      "requests": 5507,
+      "unsupported": 0,
+      "latency": 75.5,
+      "counted": true
+    },
+    {
+      "id": 59,
+      "name": "RAGTruth response-level hallucination",
+      "area": "language",
+      "metric": "F1 on hallucinated class",
+      "native": 0.67,
+      "raw": 0.67,
+      "skill": 0.3158,
+      "requests": 2700,
+      "unsupported": 0,
+      "latency": 165.2,
+      "counted": true
+    },
+    {
+      "id": 61,
+      "name": "HoVer claim verification",
+      "area": "retrieval",
+      "metric": "accuracy",
+      "native": 0.7675,
+      "raw": 0.7675,
+      "skill": 0.535,
+      "requests": 4000,
+      "unsupported": 0,
+      "latency": 118.1,
+      "counted": true
+    },
+    {
+      "id": 62,
+      "name": "When2Call MCQ",
+      "area": "tools",
+      "metric": "accuracy",
+      "native": 0.7544,
+      "raw": 0.7544,
+      "skill": 0.6725,
+      "requests": 3652,
+      "unsupported": 0,
+      "latency": 146.4,
+      "counted": true
+    },
+    {
+      "id": 64,
+      "name": "New Yorker caption matching",
+      "area": "arts",
+      "metric": "accuracy",
+      "native": 0.7027,
+      "raw": 0.7027,
+      "skill": 0.6284,
+      "requests": 528,
+      "unsupported": 0,
+      "latency": 76.6,
+      "counted": true
+    }
+  ],
+  "peers": [
+    {
+      "name": "Jev",
+      "score": 57.91,
+      "status": "reference"
+    },
+    {
+      "name": "Surogate Rune 26B-A4B v3",
+      "score": 57.44,
+      "status": "listed"
+    },
+    {
+      "name": "Decider chat · Gemma-4-31B",
+      "score": 57.33,
+      "status": "listed"
+    },
+    {
+      "name": "AutoJev / pplx-decider",
+      "score": 56.4,
+      "status": "listed"
+    },
+    {
+      "name": "simple-jev · Qwen3.8-27B (featherless)",
+      "score": 55.74,
+      "status": "listed"
+    },
+    {
+      "name": "Jebadiah 27B",
+      "score": 54.67,
+      "status": "listed"
+    },
+    {
+      "name": "JADE",
+      "score": 53.16,
+      "status": "submitted"
+    },
+    {
+      "name": "Eikos-27B",
+      "score": 53.13,
+      "status": "listed"
+    },
+    {
+      "name": "reflex 27B",
+      "score": 52.16,
+      "status": "listed"
+    },
+    {
+      "name": "Decider chat · Qwen3.6-27B",
+      "score": 51.35,
+      "status": "listed"
+    },
+    {
+      "name": "Winnow-12B",
+      "score": 50.02,
+      "status": "listed"
+    }
+  ],
+  "trainingRows": 160017,
+  "scoredRequests": 150317,
+  "answered": 150287,
+  "unsupported": 30,
+  "source": {
+    "edition": "0.2.1",
+    "date": "2026-10-02",
+    "leaderboardGenerated": "2026-09-28T00:39:36+00:00",
+    "listedModels": 70,
+    "modelRevision": "fdbed23603604021fbd46295fc7459b4fdd496cb",
+    "resultRevision": "8e99dc9db0a1cc4a2f752f88b003cb765c957d4c",
+    "kitRevision": "87d4650b42b377c0291a89c1f1a879f9b31082bf",
+    "scoresUrl": "https://huggingface.co/datasets/theunnecessarythings/JADE-Decision-Index/blob/8e99dc9db0a1cc4a2f752f88b003cb765c957d4c/runs/jade/scores.json",
+    "leaderboardUrl": "https://huggingface.co/spaces/multimodalart/jev-decision-index/blob/main/data/index.json"
+  },
+  "example": {
+    "family": "science:00000000",
+    "id": "knowledge.science:science:00000000:q1",
+    "label": "C008",
+    "question": {
+      "criteria": {
+        "C000": "113",
+        "C001": "101",
+        "C002": "98",
+        "C003": "109",
+        "C004": "111",
+        "C005": "96",
+        "C006": "103",
+        "C007": "105",
+        "C008": "107",
+        "C009": "118",
+        "C010": "64",
+        "C011": "116"
+      },
+      "instructions": "What is the conductivity of gel after 2 heat units?",
+      "type": "choice"
+    },
+    "source": {
+      "case_id": "science:00000000",
+      "dataset": "knowledge.science",
+      "generator": "knowledge.science",
+      "generator_version": 1,
+      "input_tokens": 1014,
+      "license": "generated",
+      "oracle": "causal_graph",
+      "seed": 20260925
+    },
+    "state": {
+      "laboratory": "Lab 0",
+      "materials": [
+        {
+          "baseline_conductivity": 66,
+          "heat_gain_per_unit": 10,
+          "name": "fiber",
+          "sample_mass_grams": 95,
+          "thermal_stability": "medium"
+        },
+        {
+          "baseline_conductivity": 88,
+          "heat_gain_per_unit": 7,
+          "name": "fluid",
+          "sample_mass_grams": 783,
+          "thermal_stability": "medium"
+        },
+        {
+          "baseline_conductivity": 85,
+          "heat_gain_per_unit": 11,
+          "name": "gel",
+          "sample_mass_grams": 234,
+          "thermal_stability": "high"
+        },
+        {
+          "baseline_conductivity": 28,
+          "heat_gain_per_unit": 18,
+          "name": "alloy",
+          "sample_mass_grams": 46,
+          "thermal_stability": "high"
+        },
+        {
+          "baseline_conductivity": 39,
+          "heat_gain_per_unit": 4,
+          "name": "polymer",
+          "sample_mass_grams": 787,
+          "thermal_stability": "high"
+        },
+        {
+          "baseline_conductivity": 60,
+          "heat_gain_per_unit": 2,
+          "name": "composite",
+          "sample_mass_grams": 645,
+          "thermal_stability": "medium"
+        },
+        {
+          "baseline_conductivity": 46,
+          "heat_gain_per_unit": 11,
+          "name": "film",
+          "sample_mass_grams": 537,
+          "thermal_stability": "high"
+        },
+        {
+          "baseline_conductivity": 62,
+          "heat_gain_per_unit": 12,
+          "name": "crystal",
+          "sample_mass_grams": 121,
+          "thermal_stability": "low"
+        },
+        {
+          "baseline_conductivity": 20,
+          "heat_gain_per_unit": 2,
+          "name": "resin",
+          "sample_mass_grams": 507,
+          "thermal_stability": "low"
+        },
+        {
+          "baseline_conductivity": 80,
+          "heat_gain_per_unit": 12,
+          "name": "glass",
+          "sample_mass_grams": 239,
+          "thermal_stability": "medium"
+        }
+      ],
+      "rule": "After h units of heat, conductivity is baseline + h times heat gain. Each unit of cooling removes one heat gain."
+    },
+    "suite": "knowledge.science",
+    "target": "C008"
+  },
+  "exampleView": {
+    "material": "gel",
+    "heatUnits": 2
+  }
+}

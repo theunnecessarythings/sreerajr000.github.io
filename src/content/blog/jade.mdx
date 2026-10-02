@@ -1,0 +1,178 @@
+---
+title: "JADE: teaching a language model to choose"
+date: "October 2, 2026"
+summary: "160,017 synthetic examples, rank-8 LoRA, and a full Decision Index run. What worked, what didn't, and where 53.16 puts us."
+featured: true
+readTime: "10 min read"
+imageUrl: "/images/jade.svg"
+tags: ["Machine Learning", "LoRA", "Decision Models", "GPU"]
+---
+
+import { ResultStrip, OracleExample, DecisionPath, Mixture, Leaderboard, CapabilityChart, BenchmarkExplorer } from './jade.jsx'
+
+Sometimes I want a language model to pick a tool. Or classify a message. Or tell me which of a hundred candidates fits a request. I don't particularly need a paragraph about it. I need the choice, and ideally some indication of how sure the model is.
+
+So I tried training one for exactly that.
+
+The result is **JADE — Just Another Decision Engine**. A Qwen3.8-27B backbone, rank-8 LoRA, a decision head, and 160,017 synthetic training examples. The full Decision Index 0.2.1 run came back at **53.16**, with a median request latency of **100.3 ms** on one RTX PRO 6000.
+
+<ResultStrip />
+
+That would put it alongside Eikos, provisionally joint sixth among the open entries in the published board snapshot. The submission is [PR #45](https://github.com/apolinario/decision-index/pull/45); it hasn't been accepted onto the board. More on the comparison below.
+
+I'm happy with this as a first released model. There are also some fairly obvious holes in it. Both deserve more than a screenshot of a leaderboard.
+
+## First, make the answer small
+
+A direct decision model takes context, a question, and explicit alternatives. The output is a choice and a distribution over those alternatives. A yes/no question gets a probability of yes.
+
+That sounds like classification, because it is. The useful part is that the classes arrive with the request: calendar tools today, chord labels tomorrow, a catalog of possible actions after that. We're asking the backbone to interpret the context and the candidate meanings, then use a fixed output interface.
+
+<DecisionPath />
+
+JADE has 255 decision slots. A question with twelve options uses twelve of them. The slot identities are mapped back to the supplied option IDs, so an application gets its own labels back. The model still has to read the input; the saving is in the answer. It doesn't spend a generation loop spelling out a response and then hope my parser likes it.
+
+The design follows the direct decision setup used by [AutoJev, now pplx-decider](https://huggingface.co/denis-pplx/autojev-27b). This experiment builds on that work. I wanted to see how far a small adapter and a deliberately constructed corpus could get.
+
+## Where do 160,017 correct answers come from?
+
+The tempting answer is: ask another model for 160,017 questions and answers.
+
+I wanted firmer ground under the labels. If the example is about a program, execute it. If it's about a simulated world, inspect the world. If it's an assignment problem, enumerate the valid assignments. If it's about a report, generate the report from a structured record whose facts we already know.
+
+The world comes first. The question is a view of it.
+
+Here's a small example from the released training split. You can make a choice, inspect the rule, and rearrange the options. The answer comes from the synthetic world's state. **This is an oracle exercise, not a live JADE prediction.**
+
+<OracleExample />
+
+Some examples are this simple. Others add competing constraints, multiple actions, longer catalogs, or several questions about the same underlying case. An executable label doesn't automatically make an example hard, natural, or useful. It does let me tell whether the answer is correct without turning another model's confidence into ground truth.
+
+The released corpus spans six broad areas:
+
+<Mixture />
+
+The tool portion is the largest. It includes selecting exact sets of tools, ranking candidates, and making decisions inside stateful simulations. The reasoning portion uses mathematical seeds, executable code, constraints, and causal worlds. Language cases include reports, aspect sentiment, pragmatic transformations, and security messages. Forecasting examples retain probabilities instead of converting them into pretend yes/no certainties.
+
+The arts examples need a little explanation. A synthetic preference profile gives us an exact answer *for that profile*. A symbolic composition gives us an exact chord label. Neither one establishes what a human would find tasteful or funny. That's a limitation of this version, and probably part of why its arts results are less impressive than its tool results.
+
+I also split by **family**, before treating anything as rows. Questions about one world, composition, document, or user profile stay together. Otherwise it's very easy to put one view of a generated object into training and another into validation, then congratulate yourself for remembering it.
+
+Decision Index and JevBench material stayed out of training. The public training split is [JADE-Data](https://huggingface.co/datasets/theunnecessarythings/JADE-Data). Evaluation and calibration partitions are separate.
+
+## Rank 8, one epoch
+
+I initially considered full parameter fine-tuning. The resource requirements of the training implementation made that a much larger exercise than I wanted for a first attempt. We switched to LoRA.
+
+The released checkpoint uses:
+
+| Setting | Value |
+|---|---|
+| Base | Qwen3.8-27B, BF16 |
+| LoRA rank / alpha | 8 / 16 |
+| Learning rate | 5e-5 |
+| Effective batch size | 128 |
+| Training examples | 160,017 |
+| Epochs | 1 |
+| Selected step | 1,251 |
+
+We tried higher ranks too. For this release I picked the best measured existing checkpoint. That isn't a controlled demonstration that rank 8 always beats rank 16 or 32; the earlier comparisons don't support that claim. Increasing rank is an experiment, not an automatic upgrade.
+
+Training used the Unsloth path on B200 hardware. Inference uses vLLM. The final checkpoint happened to be the selected checkpoint for this run, so this release uses the end-of-epoch weights. A temperature of 0.288644 was fitted on a separate calibration partition and is applied at inference.
+
+That last part is easy to overread. A fitted temperature gives us a calibration setting. It doesn't prove that the probabilities remain calibrated on every new task. In particular, an unfamiliar domain can make a confident classifier very confidently wrong.
+
+## 53.16: where does that land?
+
+Decision Index 0.2.1 combines 38 counted benchmarks across five capability areas. Its headline score adjusts for chance and unanswered requests, then aggregates with the edition's benchmark and area weights. **53.16 is an index score, not 53.16% accuracy.** [The scoring definition](https://github.com/apolinario/decision-index/blob/87d4650b42b377c0291a89c1f1a879f9b31082bf/README.md#scoring-and-the-index) is worth reading before comparing numbers across editions.
+
+I ran the complete frozen suite through the reproduction kit, after rebuilding it and verifying the expected hashes. The scorer reports all 150,317 scored requests accounted for: 150,287 answered, 30 unsupported, and no runtime errors. The unsupported scored requests exceeded this release's input capacity. They remain in the evaluation accounting.
+
+Here is where JADE would fit if its submitted score is validated. The comparison uses the board's published September 28 data snapshot, retrieved on October 2. Pending submissions aren't included. The chart starts at zero; the zoom control is there if you want to inspect the close scores.
+
+<Leaderboard />
+
+There are six entries above JADE if Jev is included, and five if we count only open entries. Eikos is at 53.13, just 0.03 points below our run. The board treats neighboring scores within 0.25 points as tied, giving us a **provisional joint seventh including Jev, or joint sixth among open entries**.
+
+That's a useful location to report. I wouldn't call a three-hundredths gap a meaningful win. More relevant gaps are 1.51 points to Jebadiah, 3.24 to AutoJev/pplx-decider, and 4.75 to Jev. Those models provide a better sense of how much work remains.
+
+## The average hides the interesting part
+
+Tools are JADE's strongest area. Knowledge and arts are substantially weaker. Switch between the native area aggregate and the chance-adjusted skill score below. Both use a zero-to-100 scale, but they answer different questions.
+
+<CapabilityChart />
+
+Tool skill is 73.18; knowledge skill is 40.71; arts skill is 34.76. The tool data emphasis and the stronger tool score line up, but one trained model can't establish that the mixture caused the difference. The backbone, task difficulty, scoring rules, and synthetic coverage all matter too.
+
+A few individual results make the contrast sharper. BFCL case-exact accuracy is 96.99%, while MMLU-Pro accuracy is 64.19%. HLE accuracy is 9.60%, which contributes zero chance-adjusted skill under this index. POP909 chord accuracy is 19.80%. A good aggregate tool result clearly doesn't mean we solved general reasoning or musical understanding.
+
+You can inspect every benchmark in the run below. The native column keeps each benchmark's own metric. **Brier is lower-is-better**; accuracy, F1, and nDCG aren't interchangeable. The skill column is the index's comparable chance-adjusted contribution.
+
+<BenchmarkExplorer />
+
+The [complete predictions and scores](https://huggingface.co/datasets/theunnecessarythings/JADE-Decision-Index) are public, so these comparisons don't depend on taking my chart at face value.
+
+## The GPU wasn't the only thing worth watching
+
+There was a very unglamorous detour before this result.
+
+The official suite rebuild got stuck spending a long time on BRIGHT. It builds full-text document indexes and runs retrieval queries to construct the requests. We had put the SQLite indexes on the shared filesystem. By one check, the job had read about 392 GB and was repeatedly waiting on storage.
+
+We moved the working files to node-local NVMe. The replacement job finished the remaining rebuild, verification, and copy-back in 14 minutes 22 seconds. Those timings cover different amounts of work, so they aren't a clean speedup measurement. They were enough to make the storage mistake fairly obvious.
+
+Evaluation also looked slow from the early progress reports. I queued a four-GPU job to take over the remaining requests, with one independent worker per card. The original single-GPU job finished before that allocation arrived. The total single-GPU job time was 11 hours 20 minutes, including startup and scoring. The four-GPU job had nothing left to evaluate. We fixed the empty-work check afterward.
+
+So there is no four-GPU speedup result to advertise here. There is a single-GPU run with a median of 100.3 ms and a p95 of 716.9 ms. Early throughput was a poor predictor of the whole run because the benchmark mix changes as the runner proceeds. And a fast median doesn't mean every request is fast: the ToolRet benchmark's median was about 2.36 seconds.
+
+## What I would change next
+
+I don't think the next step is blindly turning the LoRA rank knob.
+
+I'd first improve the variety and difficulty of the synthetic worlds: more interacting constraints, longer causal chains, and situations where a superficially plausible answer fails a second condition. I'd also want better evidence for the subjective tasks. Synthetic preferences are useful supervision, but they cover a narrower problem than human taste.
+
+Then I'd test the changes against a frozen baseline, using the private holdouts to select them. That gives the next official evaluation a chance to tell us something new, instead of gradually turning the public suite into training instructions.
+
+There is an extra wrinkle: the maintainer has [paused 0.2.x submissions while preparing v0.3](https://github.com/apolinario/decision-index/pull/21#issuecomment-5865374837), which is expected to add private held-out benchmarks. Our 0.2.1 result is complete and submitted. When the new version arrives, I'd run this exact checkpoint first, then compare any successor on the same suite.
+
+That is the experiment I'm interested in now: how much of what these small synthetic worlds taught survives contact with a different set of decisions?
+
+## Try it, or inspect it
+
+- [JADE weights and inference code](https://huggingface.co/theunnecessarythings/JADE)
+- [The 160,017 training examples](https://huggingface.co/datasets/theunnecessarythings/JADE-Data)
+- [Full Decision Index results](https://huggingface.co/datasets/theunnecessarythings/JADE-Decision-Index)
+- [Submission PR #45](https://github.com/apolinario/decision-index/pull/45)
+- [Decision Index reproduction kit](https://github.com/apolinario/decision-index)
+
+The release supports text, `choice` and `noul`, up to 255 options and 8,192 tokens including the answer token. The exact evaluated revision is `fdbed23603604021fbd46295fc7459b4fdd496cb`.
+
+```bash
+pip install vllm==0.30.0 huggingface_hub
+hf download theunnecessarythings/JADE \
+  --revision fdbed23603604021fbd46295fc7459b4fdd496cb \
+  --local-dir jade-model
+export PYTHONPATH="$PWD/jade-model:$PYTHONPATH"
+```
+
+```python
+from jade import JadeEngine
+
+engine = JadeEngine(model="./jade-model")
+response, _ = engine(
+    state="Move my meeting with Sam to tomorrow at 3 pm.",
+    questions={
+        "tool": {
+            "type": "choice",
+            "instructions": "Which tool should handle this request?",
+            "criteria": {
+                "calendar": "Find and update a calendar event",
+                "email": "Search the email inbox",
+                "notes": "Create a note",
+            },
+        }
+    },
+)
+print(response["answers"]["tool"])
+```
+
+This is a first release. It chooses reasonably well in some places and falls over in others. Now we have enough measured evidence to decide what to try next.
