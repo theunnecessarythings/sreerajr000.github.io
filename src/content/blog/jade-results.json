@@ -1,0 +1,125 @@
+{
+  "edition": "0.3",
+  "index": 55.56,
+  "rank": 11,
+  "tieBand": 0.9,
+  "publicScore": 53.42,
+  "latency": {
+    "median": 133.3,
+    "p95": null,
+    "mean": 277.7
+  },
+  "trainingRows": 160017,
+  "areas": [
+    {
+      "id": "knowledge",
+      "raw": 0.5397,
+      "skill": 0.4124,
+      "n": 11
+    },
+    {
+      "id": "language",
+      "raw": 0.696,
+      "skill": 0.5646,
+      "n": 9
+    },
+    {
+      "id": "retrieval",
+      "raw": 0.6753,
+      "skill": 0.544,
+      "n": 6
+    },
+    {
+      "id": "tools",
+      "raw": 0.7602,
+      "skill": 0.7318,
+      "n": 5
+    },
+    {
+      "id": "arts",
+      "raw": 0.5845,
+      "skill": 0.3897,
+      "n": 6
+    }
+  ],
+  "peers": [
+    {
+      "engine": "pplx-decider-v1.1-27b",
+      "name": "Perplexity Decider v1.1 (27B)",
+      "score": 62.75,
+      "rank": 1,
+      "tied": false
+    },
+    {
+      "engine": "decision-27b-ckpt-nothink",
+      "name": "Fastino GLiDE no-thinking (28B)",
+      "score": 60.21,
+      "rank": 2,
+      "tied": true
+    },
+    {
+      "engine": "jev",
+      "name": "Jev — reference",
+      "score": 60.11,
+      "rank": 2,
+      "tied": true
+    },
+    {
+      "engine": "torchcast-decision-27b",
+      "name": "Torchcast Decision 27B",
+      "score": 59.91,
+      "rank": 2,
+      "tied": true
+    },
+    {
+      "engine": "deck31b",
+      "name": "deck31b (Gemma 4 31B)",
+      "score": 59.03,
+      "rank": 5,
+      "tied": true
+    },
+    {
+      "engine": "blink-v0.3-26b-a4b-nvfp4",
+      "name": "Blink v0.3 26B-A4B (NVFP4)",
+      "score": 57.76,
+      "rank": 8,
+      "tied": true
+    },
+    {
+      "engine": "rune-26b-a4b-v3",
+      "name": "Surogate Rune 26B-A4B v3",
+      "score": 57.43,
+      "rank": 8,
+      "tied": true
+    },
+    {
+      "engine": "jebadiah-27b",
+      "name": "Jebadiah 27B",
+      "score": 55.63,
+      "rank": 11,
+      "tied": true
+    },
+    {
+      "engine": "jade",
+      "name": "JADE",
+      "score": 55.56,
+      "rank": 11,
+      "tied": true
+    },
+    {
+      "engine": "eikos-27b-fp8",
+      "name": "Eikos-27B",
+      "score": 55.34,
+      "rank": 11,
+      "tied": true
+    }
+  ],
+  "source": {
+    "snapshotUtc": "2026-10-07T12:20:45Z",
+    "revision": "d4de72b7ae1e54c0819bc604d6b137a8e8bae99d",
+    "leaderboardUrl": "https://huggingface.co/spaces/multimodalart/jev-decision-index",
+    "indexDataUrl": "https://huggingface.co/spaces/multimodalart/jev-decision-index/blob/d4de72b7ae1e54c0819bc604d6b137a8e8bae99d/data/index.json",
+    "scoringDataUrl": "https://huggingface.co/spaces/multimodalart/jev-decision-index/blob/d4de72b7ae1e54c0819bc604d6b137a8e8bae99d/data/v03.json",
+    "acceptanceUrl": "https://github.com/apolinario/decision-index/pull/45#issuecomment-6032800952"
+  }
+}

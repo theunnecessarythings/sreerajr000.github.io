@@ -1,0 +1,144 @@
+---
+title: "JADE"
+date: "October 7, 2026"
+summary: "A Qwen3.8-27B decision model trained with rank-8 LoRA on 160,017 synthetic examples. Accepted onto Decision Index 0.3 with a Full score of 55.56, placing joint #11."
+featured: true
+readTime: "6 min read"
+imageUrl: "/images/jade.svg"
+tags: ["Machine Learning", "LoRA", "Decision Models", "GPU"]
+---
+
+import { ResultStrip, Mixture, Leaderboard, CapabilityChart } from './jade.jsx'
+
+**Just Another Decision Engine.**
+
+JADE is a Qwen3.8-27B decision model trained with rank-8 LoRA on 160,017 synthetic examples. It has been accepted onto **Decision Index 0.3 with a Full score of 55.56**, placing **joint #11** on the board as of October 7, 2026.
+
+We set out to see whether our own synthetic training data and a small adapter could produce a competitive decision model, aiming for the index's top ten. JADE is the result of that attempt.
+
+Give it some context, a question, and a set of options. It returns a decision and a probability for each option. It can also answer yes/no questions with a probability. There is no generated explanation to parse.
+
+[Model](https://huggingface.co/theunnecessarythings/JADE) · [Training data](https://huggingface.co/datasets/theunnecessarythings/JADE-Data) · [Leaderboard](https://huggingface.co/spaces/multimodalart/jev-decision-index)
+
+<ResultStrip />
+
+## Training
+
+The released model uses Qwen3.8-27B with rank-8 LoRA adapters and a trained 255-way decision head.
+
+| Setting | Value |
+|---|---|
+| Backbone | Qwen3.8-27B, BF16 |
+| LoRA rank / alpha | 8 / 16 |
+| Learning rate | 5e-5 |
+| Effective batch size | 128 |
+| Training examples | 160,017 |
+| Training | One epoch |
+| Selected checkpoint | Step 1,251 |
+
+Training used Unsloth on B200 hardware. The selected checkpoint is the final checkpoint of this run. A temperature of **0.288644** was fitted on a separate calibration partition and is applied during inference.
+
+The direct-decision setup and prompt renderer build on [AutoJev](https://huggingface.co/denis-pplx/autojev-27b).
+
+## Training data
+
+[JADE-Data](https://huggingface.co/datasets/theunnecessarythings/JADE-Data) contains 160,017 synthetic examples across six broad areas.
+
+<Mixture />
+
+Labels are derived from programs, simulators, solvers, and structured world state. Programs can be executed to determine their output; constraint problems can be solved; claims about generated reports can be checked against the records used to write them.
+
+Tool examples include selecting exact sets of tools, ranking candidates, and choosing actions in stateful simulations. Forecasting examples retain probability targets. Symbolic music and synthetic preference profiles provide additional decision tasks with explicit underlying state.
+
+Related examples are grouped into families. Questions derived from the same world, document, catalog, or preference profile remain in one partition.
+
+**Decision Index and JevBench evaluation material were not used in the fine-tuning corpus.** The training split is public; development, calibration, and other holdout partitions are separate.
+
+## Decision Index 0.3
+
+JADE was [accepted into the index on October 7](https://github.com/apolinario/decision-index/pull/45#issuecomment-6032800952).
+
+| Metric | Result |
+|---|---:|
+| **Full score** | **55.56** |
+| **Overall placement** | **Joint #11** |
+| Public-only score | 53.42 |
+| Board-reported median latency | 133.3 ms |
+
+Version 0.3 combines public benchmarks with private evaluations. Its Full score weights public benchmarks at **20%**, private tests of the same skills at **50%**, and private tasks from new domains at **30%**, after mapping the components onto a common scale.
+
+Our original submission scored **53.16 on version 0.2.1**. The accepted **55.56** is the v0.3 result for the same released model, under the updated evaluation and scoring methodology.
+
+### Comparison
+
+Selected entries from the October 7 v0.3 board:
+
+<Leaderboard />
+
+The board uses a **0.9-point tie band** in v0.3. JADE shares its displayed rank with several models; the hundredths separating entries in that group should be read in that context. The ranking above includes Jev as the reference. [Current leaderboard](https://huggingface.co/spaces/multimodalart/jev-decision-index).
+
+## Public benchmark breakdown
+
+Tools and automation are JADE's strongest public capability area. Knowledge and reasoning, and arts and human taste, leave more room for improvement.
+
+These are the **public-panel area scores reported in v0.3**. The native aggregate combines each area's task metrics; the skill score adjusts for chance and coverage.
+
+<CapabilityChart />
+
+The tool result is encouraging given the substantial tool coverage in the training corpus. A controlled mixture ablation would help establish which parts of that coverage contributed most.
+
+The weaker areas also give us specific directions to investigate. Synthetic worlds provide reliable labels, but their variety and difficulty determine how much useful supervision they offer. Synthetic preference profiles, in particular, cover a narrower problem than human taste.
+
+Our submitted public evaluation ran on one **NVIDIA RTX PRO 6000 Blackwell Server Edition**, using vLLM. The [original predictions, scores, and runtime artifacts](https://huggingface.co/datasets/theunnecessarythings/JADE-Decision-Index) are available separately.
+
+## Using JADE
+
+The included inference code uses Python 3.11+ and vLLM. It requires an NVIDIA GPU with enough memory for the 27B backbone and its inference cache.
+
+```bash
+pip install vllm==0.30.0 huggingface_hub
+
+hf download theunnecessarythings/JADE \
+  --revision fdbed23603604021fbd46295fc7459b4fdd496cb \
+  --local-dir jade-model
+
+export PYTHONPATH="$PWD/jade-model:$PYTHONPATH"
+```
+
+```python
+from jade import JadeEngine
+
+engine = JadeEngine(model="./jade-model")
+
+response, _ = engine(
+    state="Move my meeting with Sam to tomorrow at 3 pm.",
+    questions={
+        "tool": {
+            "type": "choice",
+            "instructions": "Which tool should handle this request?",
+            "criteria": {
+                "calendar": "Find and update a calendar event",
+                "email": "Search the email inbox",
+                "notes": "Create a note",
+            },
+        }
+    },
+)
+
+print(response["answers"]["tool"])
+```
+
+The answer contains a `choice` and a `probabilities` mapping for the supplied options.
+
+For a yes/no question, use `"type": "noul"`. Its answer contains `"noul"`, the probability of **yes**. Several named questions can be supplied in one call.
+
+This release supports text inputs, up to **255 options per question**, and **8,192 tokens including the answer token**. Images and `score` questions are unsupported. Inputs exceeding the limits raise an error.
+
+## Release
+
+The weights and original release code are available under Apache-2.0. The prompt renderer is adapted from AutoJev, with its MIT license included in the repository.
+
+- **[JADE — model and inference code](https://huggingface.co/theunnecessarythings/JADE)**
+- **[JADE-Data — training corpus](https://huggingface.co/datasets/theunnecessarythings/JADE-Data)**
+- **[Submitted v0.2.1 evaluation artifacts](https://huggingface.co/datasets/theunnecessarythings/JADE-Decision-Index)**
+- **[Official Decision Index leaderboard](https://huggingface.co/spaces/multimodalart/jev-decision-index)**
