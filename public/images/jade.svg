@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-labelledby="title desc">
-  <title id="title">JADE — teaching a language model to choose</title>
-  <desc id="desc">A faceted green decision engine connects an input to a set of possible answers, with one path illuminated. Decision Index 0.2.1 score: 53.16.</desc>
+  <title id="title">JADE — Just Another Decision Engine</title>
+  <desc id="desc">A faceted green decision engine connects an input to a set of possible answers, with one path illuminated. Decision Index 0.3 Full score: 55.56, joint #11.</desc>
   <defs>
     <pattern id="grid" width="48" height="48" patternUnits="userSpaceOnUse"><path d="M48 0H0V48" fill="none" stroke="#20352a" stroke-width="1"/></pattern>
     <radialGradient id="glow"><stop stop-color="#29583d" stop-opacity=".65"/><stop offset="1" stop-color="#09110c" stop-opacity="0"/></radialGradient>
@@ -27,12 +27,12 @@
     <path d="m1045 455-43 82 43 88 44-88Z" fill="#7cf7c8" fill-opacity=".12"/>
   </g>
   <g font-family="ui-monospace, monospace">
-    <text x="100" y="160" fill="#91ae9c" font-size="22" letter-spacing="5">AN EXPERIMENT IN DIRECT DECISIONS</text>
+    <text x="100" y="160" fill="#91ae9c" font-size="22" letter-spacing="5">JUST ANOTHER DECISION ENGINE</text>
     <text x="92" y="375" fill="#edf4ef" font-size="170" font-weight="700" letter-spacing="-9">JADE</text>
     <text x="100" y="439" fill="#7cf7c8" font-size="26">Just Another Decision Engine.</text>
-    <text x="100" y="580" fill="#edf4ef" font-size="70" font-weight="600">53.16</text>
-    <text x="100" y="626" fill="#91ae9c" font-size="21">Decision Index 0.2.1</text>
-    <text x="100" y="783" fill="#91ae9c" font-size="20">160,017 examples · rank-8 LoRA · one decision at a time</text>
+    <text x="100" y="580" fill="#edf4ef" font-size="70" font-weight="600">55.56</text>
+    <text x="100" y="626" fill="#91ae9c" font-size="21">Decision Index 0.3 · joint #11</text>
+    <text x="100" y="783" fill="#91ae9c" font-size="20">160,017 synthetic examples · rank-8 LoRA</text>
     <text x="1427" y="296" fill="#577562" font-size="25">01</text>
     <text x="1427" y="636" fill="#577562" font-size="25">03</text>
   </g>
